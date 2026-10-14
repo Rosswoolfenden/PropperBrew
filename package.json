@@ -13,7 +13,10 @@
     "db:migrate": "pnpm --filter @propperbrew/db db:migrate",
     "db:studio": "pnpm --filter @propperbrew/db db:studio",
     "supabase:start": "supabase start",
-    "supabase:stop": "supabase stop"
+    "supabase:stop": "supabase stop",
+    "test:e2e": "pnpm --filter @propperbrew/e2e test",
+    "demo": "docker compose up --build",
+    "test:android": "pnpm --filter @propperbrew/e2e test:android"
   },
   "devDependencies": {
     "turbo": "^2.11.8",

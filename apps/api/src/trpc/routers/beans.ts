@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, exists, ilike, lt, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, exists, ilike, lt, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { coffeeBeans, roasters, shopifyVariants } from "@propperbrew/db";
 import { BeanSearchInput, ratingFromDb } from "@propperbrew/shared";
@@ -68,14 +68,18 @@ export const beansRouter = router({
       if (!roaster) throw new TRPCError({ code: "NOT_FOUND" });
       const bean = await ctx.db.query.coffeeBeans.findFirst({
         where: and(eq(coffeeBeans.roasterId, roaster.id), eq(coffeeBeans.slug, input.beanSlug)),
-        with: { variants: { where: eq(shopifyVariants.inStock, true) } },
+        with: { variants: { where: eq(shopifyVariants.inStock, true), orderBy: asc(shopifyVariants.pricePence) } },
       });
       if (!bean) throw new TRPCError({ code: "NOT_FOUND" });
       const { shopifyAccessTokenEnc: _t, shopifyScopes: _s, stripeAccountId: _a, commissionBps: _c, ...publicRoaster } = roaster;
       return {
         ...withRating(bean),
         roaster: publicRoaster,
-        variants: bean.isArchived ? [] : bean.variants.map(({ id, title, weightG, grindOption, pricePence }) => ({ id, title, weightG, grindOption, pricePence })),
+        variants: bean.isArchived
+          ? []
+          : bean.variants.map(({ id, shopifyVariantId, title, weightG, grindOption, pricePence }) => ({ id, shopifyVariantId, title, weightG, grindOption, pricePence })),
+        /** Where to send buyers (see shopifyCartUrl). Null when nothing can be ordered from the roaster's store. */
+        checkoutDomain: bean.isArchived ? null : roaster.shopifyDomain,
       };
     }),
 });

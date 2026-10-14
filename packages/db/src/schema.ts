@@ -207,9 +207,9 @@ export const brewRecipes = pgTable(
   "brew_recipes",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => profiles.id, { onDelete: "cascade" }),
+    /** Author: a community member, or (for the roaster's own recommendation) the roaster. Exactly one is set. */
+    userId: uuid("user_id").references(() => profiles.id, { onDelete: "cascade" }),
+    roasterId: uuid("roaster_id").references(() => roasters.id, { onDelete: "cascade" }),
     coffeeBeanId: uuid("coffee_bean_id")
       .notNull()
       .references(() => coffeeBeans.id, { onDelete: "cascade" }),
@@ -231,6 +231,7 @@ export const brewRecipes = pgTable(
   (t) => [
     index("brew_recipes_bean_method_idx").on(t.coffeeBeanId, t.brewMethod, t.upvotesCount),
     index("brew_recipes_bean_grinder_idx").on(t.coffeeBeanId, t.grinderKey),
+    check("brew_recipes_one_author", sql`(${t.userId} is null) <> (${t.roasterId} is null)`),
   ],
 );
 
@@ -360,6 +361,7 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
 
 export const brewRecipesRelations = relations(brewRecipes, ({ one }) => ({
   user: one(profiles, { fields: [brewRecipes.userId], references: [profiles.id] }),
+  roaster: one(roasters, { fields: [brewRecipes.roasterId], references: [roasters.id] }),
   bean: one(coffeeBeans, { fields: [brewRecipes.coffeeBeanId], references: [coffeeBeans.id] }),
 }));
 

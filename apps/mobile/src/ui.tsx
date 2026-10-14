@@ -2,6 +2,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { radius } from "@propperbrew/shared";
 import type { ComponentProps, ReactNode } from "react";
 import {
+  ActivityIndicator,
   Image,
   Pressable,
   StyleSheet,
@@ -20,16 +21,21 @@ export const GUTTER = 24;
 
 type IconName = ComponentProps<typeof MaterialIcons>["name"];
 
+export function Loading() {
+  const colors = useColors();
+  return <ActivityIndicator color={colors.primary} style={{ marginTop: 32 }} />;
+}
+
 /** Small uppercase metadata label, e.g. "ROAST LEVEL". */
 export function Eyebrow({ children, style }: { children: ReactNode; style?: StyleProp<TextStyle> }) {
-  const s = useStyles();
-  return <Text style={[s.eyebrow, style]}>{children}</Text>;
+  const styles = useStyles();
+  return <Text style={[styles.eyebrow, style]}>{children}</Text>;
 }
 
 export function Headline({ children, size = "title" }: { children: ReactNode; size?: "display" | "title" | "section" }) {
-  const s = useStyles();
+  const styles = useStyles();
   return (
-    <Text role="heading" style={[s.headline, s[size]]}>
+    <Text role="heading" style={[styles.headline, styles[size]]}>
       {children}
     </Text>
   );
@@ -46,30 +52,30 @@ export function Body({
   muted?: boolean;
   style?: StyleProp<TextStyle>;
 }) {
-  const s = useStyles();
-  return <Text style={[s.body, italic && s.italic, muted && s.muted, style]}>{children}</Text>;
+  const styles = useStyles();
+  return <Text style={[styles.body, italic && styles.italic, muted && styles.muted, style]}>{children}</Text>;
 }
 
-/** Terracotta flavour chip. */
-export function Chip({ label, small }: { label: string; small?: boolean }) {
-  const s = useStyles();
+/** Terracotta flavour chip. `small` is the squared tag style; add `pill` for the rounded one on cards. */
+export function Chip({ label, small, pill }: { label: string; small?: boolean; pill?: boolean }) {
+  const styles = useStyles();
   return (
-    <View style={[s.chip, small && s.chipSmall]}>
-      <Text style={[s.chipText, small && s.chipTextSmall]}>{label}</Text>
+    <View style={[styles.chip, small && styles.chipSmall, pill && styles.chipPill]}>
+      <Text style={[styles.chipText, small && styles.chipTextSmall]}>{label}</Text>
     </View>
   );
 }
 
 export function FilterChip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
-  const s = useStyles();
+  const styles = useStyles();
   return (
     <Pressable
       role="button"
       aria-selected={selected}
       onPress={onPress}
-      style={({ pressed }) => [s.filter, selected && s.filterSelected, pressed && s.pressed]}
+      style={({ pressed }) => [styles.filter, selected && styles.filterSelected, pressed && styles.pressed]}
     >
-      <Text style={[s.filterText, selected && s.filterTextSelected]}>{label}</Text>
+      <Text style={[styles.filterText, selected && styles.filterTextSelected]}>{label}</Text>
     </Pressable>
   );
 }
@@ -89,7 +95,7 @@ export function Button({
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
-  const s = useStyles();
+  const styles = useStyles();
   const colors = useColors();
   const fg = variant === "primary" ? colors.onPrimary : colors.primary;
   return (
@@ -97,22 +103,45 @@ export function Button({
       role="button"
       onPress={onPress}
       disabled={disabled}
-      style={({ pressed }) => [s.button, s[variant], pressed && s.pressed, disabled && s.disabled, style]}
+      style={({ pressed }) => [styles.button, styles[variant], pressed && styles.pressed, disabled && styles.disabled, style]}
     >
       {icon && <MaterialIcons name={icon} size={18} color={fg} />}
-      <Text style={[s.buttonText, { color: fg }]}>{label}</Text>
+      <Text style={[styles.buttonText, { color: fg }]}>{label}</Text>
     </Pressable>
   );
 }
 
-export function Field({ label, ...input }: { label: string } & TextInputProps) {
-  const s = useStyles();
+export function Field({ label, error, style, ...input }: { label: string; error?: string } & TextInputProps) {
+  const styles = useStyles();
   const colors = useColors();
   return (
     <View style={{ gap: 6 }}>
       <Eyebrow style={{ marginLeft: 4 }}>{label}</Eyebrow>
-      <TextInput aria-label={label} placeholderTextColor={colors.outline} style={s.input} {...input} />
+      <TextInput
+        aria-label={label}
+        aria-invalid={!!error}
+        placeholderTextColor={colors.outline}
+        style={[styles.input, error && styles.inputError, style]}
+        {...input}
+      />
+      {error && <Text style={styles.error}>{error}</Text>}
     </View>
+  );
+}
+
+/** Icon button for the top bar (the design's menu/avatar/close slots). */
+export function HeaderIcon({ icon, label, onPress }: { icon: IconName; label: string; onPress?: () => void }) {
+  const colors = useColors();
+  return (
+    <Pressable
+      role="button"
+      aria-label={label}
+      onPress={onPress}
+      hitSlop={8}
+      style={({ pressed }) => ({ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.6 : 1 })}
+    >
+      <MaterialIcons name={icon} size={24} color={colors.primary} />
+    </Pressable>
   );
 }
 
@@ -136,34 +165,57 @@ export function Stars({ value, size = 14 }: { value: number; size?: number }) {
 }
 
 export function Rating({ value, count }: { value: number; count: number }) {
-  const s = useStyles();
+  const styles = useStyles();
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
       <Stars value={value} />
-      <Text style={s.ratingCount}>
+      <Text style={styles.ratingCount}>
         {value.toFixed(1)} ({count} {count === 1 ? "review" : "reviews"})
       </Text>
     </View>
   );
 }
 
-/** Rounded image on a tonal block, so a missing image still holds the layout. */
-export function Frame({ uri, aspectRatio = 1, style }: { uri: string | null; aspectRatio?: number; style?: StyleProp<ViewStyle> }) {
-  const s = useStyles();
-  return <View style={[s.frame, { aspectRatio }, style]}>{uri && <Image source={{ uri }} style={StyleSheet.absoluteFill} />}</View>;
+/**
+ * Rounded image on a tonal block, so a missing image still holds the layout.
+ * `fit="contain"` insets the image, for product shots of a bag on a plain background.
+ */
+export function Frame({
+  uri,
+  aspectRatio = 1,
+  fit = "cover",
+  style,
+}: {
+  uri: string | null;
+  aspectRatio?: number;
+  fit?: "cover" | "contain";
+  style?: StyleProp<ViewStyle>;
+}) {
+  const styles = useStyles();
+  return (
+    <View style={[styles.frame, { aspectRatio }, style]}>
+      {uri && (
+        <Image
+          source={{ uri }}
+          resizeMode={fit}
+          style={[StyleSheet.absoluteFill, fit === "contain" && { margin: 24 }]}
+        />
+      )}
+    </View>
+  );
 }
 
 /** Icon tile + label + value, from the design's brewing guide. */
 export function Step({ icon, title, children }: { icon: IconName; title: string; children: ReactNode }) {
-  const s = useStyles();
+  const styles = useStyles();
   const colors = useColors();
   return (
     <View style={{ flexDirection: "row", gap: 16, alignItems: "flex-start" }}>
-      <View style={s.stepIcon}>
+      <View style={styles.stepIcon}>
         <MaterialIcons name={icon} size={22} color={colors.primary} />
       </View>
       <View style={{ flex: 1, gap: 2 }}>
-        <Text style={s.stepTitle}>{title}</Text>
+        <Text style={styles.stepTitle}>{title}</Text>
         <Body muted>{children}</Body>
       </View>
     </View>
@@ -184,6 +236,7 @@ const useStyles = themed((c) =>
     chipSmall: { alignSelf: "flex-start", paddingVertical: 2, paddingHorizontal: 8, borderRadius: radius.sm },
     chipText: { fontFamily: fonts.label, fontSize: 12, letterSpacing: 0.6, textTransform: "uppercase", color: c.onSecondaryContainer },
     chipTextSmall: { fontSize: 9 },
+    chipPill: { borderRadius: radius.xl },
     filter: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: radius.xl, backgroundColor: c.surfaceContainerHigh },
     filterSelected: { backgroundColor: c.surfaceTint },
     filterText: { fontFamily: fonts.label, fontSize: 11, letterSpacing: 0.8, textTransform: "uppercase", color: c.onSurfaceVariant },
@@ -196,6 +249,9 @@ const useStyles = themed((c) =>
     disabled: { opacity: 0.5 },
     buttonText: { fontFamily: fonts.labelBold, fontSize: 13, letterSpacing: 1.4, textTransform: "uppercase" },
     input: { fontFamily: fonts.body, fontSize: 17, color: c.onSurface, backgroundColor: c.surfaceContainerHighest, borderRadius: radius.md, paddingHorizontal: 16, paddingVertical: 16 },
+    // Bottom-only accent on error, like the design's focus state, rather than a full outline.
+    inputError: { borderBottomWidth: 2, borderBottomColor: c.error },
+    error: { marginLeft: 4, fontFamily: fonts.label, fontSize: 12, color: c.error },
     ratingCount: { fontFamily: fonts.label, fontSize: 12, color: c.onSurfaceVariant },
     frame: { width: "100%", overflow: "hidden", borderRadius: radius.xl, backgroundColor: c.surfaceContainerHigh },
     stepIcon: { width: 48, height: 48, borderRadius: radius.xl, alignItems: "center", justifyContent: "center", backgroundColor: c.surfaceContainerHighest },

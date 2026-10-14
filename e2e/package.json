@@ -1,0 +1,17 @@
+{
+  "name": "@propperbrew/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "tsx setup-db.ts && playwright test",
+    "typecheck": "tsc --noEmit",
+    "test:android": "tsx native/android.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "@types/node": "^24.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  }
+}

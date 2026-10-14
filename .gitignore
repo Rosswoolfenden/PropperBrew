@@ -15,3 +15,7 @@ apps/mobile/android
 .shopify/
 # Contains a plaintext Stitch API key
 .vscode/mcp.json
+
+# Playwright
+e2e/test-results/
+e2e/playwright-report/

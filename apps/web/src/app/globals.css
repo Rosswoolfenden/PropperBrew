@@ -16,7 +16,7 @@ body {
 }
 a { color: inherit; }
 h1, h2, h3 { font-family: var(--font-headline); color: var(--primary); margin: 0; }
-h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 32px; }
+h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; margin-bottom: 32px; }
 p { margin: 0; }
 main { max-width: 1040px; margin: 0 auto; padding: 32px 24px 112px; }
 
@@ -24,9 +24,9 @@ main { max-width: 1040px; margin: 0 auto; padding: 32px 24px 112px; }
 .site-header {
   position: sticky; top: 0; z-index: 50;
   background: color-mix(in srgb, var(--surface) 80%, transparent);
-  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
 }
-.site-header-inner { max-width: 1040px; margin: 0 auto; padding: 16px 24px; }
+.site-header-inner { max-width: 1040px; margin: 0 auto; padding: 16px 24px; text-align: center; }
 .logo { font: 800 1.25rem var(--font-headline); letter-spacing: -0.04em; color: var(--primary); text-decoration: none; }
 
 /* Type roles */
@@ -39,9 +39,8 @@ main { max-width: 1040px; margin: 0 auto; padding: 32px 24px 112px; }
 .lead { font-size: 1.25rem; line-height: 1.6; color: color-mix(in srgb, var(--on-surface) 80%, transparent); }
 .subtitle { font-size: 1.125rem; font-style: italic; color: var(--on-surface-variant); }
 .muted { color: var(--on-surface-variant); }
-.italic { font-style: italic; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-.intro { display: grid; gap: 16px; margin-bottom: 64px; max-width: 640px; }
 .section { margin-top: 96px; }
 
 /* Flavour chips: warm terracotta signals taste. */
@@ -52,6 +51,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 32px 24px 112px; }
   font: 500 12px/1.4 var(--font-headline); text-transform: uppercase; letter-spacing: 0.05em;
 }
 .chip-sm { padding: 2px 8px; border-radius: 2px; font-size: 9px; }
+.chip-pill { border-radius: 12px; font-weight: 700; }
 
 .rating { display: inline-flex; align-items: baseline; gap: 6px; font-family: var(--font-headline); }
 .stars { color: var(--primary); letter-spacing: 2px; font-size: 14px; }
@@ -62,14 +62,65 @@ main { max-width: 1040px; margin: 0 auto; padding: 32px 24px 112px; }
 .frame { overflow: hidden; border-radius: 12px; background: var(--surface-container-high); }
 .frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
-/* Home: "Seasonal harvest" rows */
-.bean-grid { display: grid; gap: 48px 32px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); }
-.bean-row { display: flex; gap: 24px; align-items: center; text-decoration: none; }
-.bean-row .frame { flex: 0 0 33%; aspect-ratio: 1; background: var(--surface-container-lowest); box-shadow: var(--ambient-shadow); }
-.bean-row-body { display: grid; gap: 6px; justify-items: start; min-width: 0; }
-.bean-row h3 { font-size: 1.25rem; font-weight: 700; line-height: 1.2; }
-.bean-row:hover h3 { text-decoration: underline; text-underline-offset: 4px; }
-.bean-row .notes { font-size: 0.9rem; color: var(--on-surface-variant); }
+/* Discover: roaster spotlight + a horizontal row of coffees per roaster */
+.spotlight { display: grid; gap: 20px; margin-bottom: 72px; }
+.spotlight-head { display: flex; justify-content: space-between; align-items: baseline; }
+.spotlight-counter { color: var(--primary); }
+.spotlight-track, .coffee-track {
+  display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+  /* Bleed to the screen edge while the first card stays on the gutter. */
+  margin: 0 -24px; padding: 0 24px; scroll-padding: 0 24px;
+}
+.spotlight-track::-webkit-scrollbar, .coffee-track::-webkit-scrollbar { display: none; }
+.spotlight-track { gap: 12px; }
+.spotlight-card { position: relative; flex: 0 0 min(100%, 480px); aspect-ratio: 4 / 5; scroll-snap-align: start; text-decoration: none; }
+.spotlight-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, color-mix(in srgb, var(--primary) 60%, transparent), transparent 65%); }
+.spotlight-text { position: absolute; z-index: 1; left: 32px; right: 32px; bottom: 32px; display: grid; gap: 4px; color: #fff; }
+.spotlight-text strong { font: 800 clamp(2rem, 6vw, 2.5rem)/1.05 var(--font-headline); letter-spacing: -0.05em; }
+.spotlight-text span { font-size: 1.125rem; font-style: italic; opacity: 0.9; }
+.spotlight-about { display: grid; gap: 16px; justify-items: start; max-width: 640px; }
+/* "—— SEE THEIR COFFEES" */
+.rule-link { display: inline-flex; align-items: center; gap: 8px; font: 700 10px var(--font-headline); text-transform: uppercase; letter-spacing: 0.1rem; color: var(--primary); text-decoration: none; }
+.rule-link::before { content: ""; width: 32px; height: 1px; background: var(--primary); }
+
+.section-tight { margin-bottom: 80px; }
+/* The Collection: two columns, right-hand one dropped for the design's asymmetry. */
+.collection { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(45%, 220px), 1fr)); gap: 48px 16px; padding: 0; margin: 0; list-style: none; }
+.collection > li:nth-child(even) { margin-top: 32px; }
+.collection-item { display: grid; gap: 2px; text-decoration: none; }
+.collection-item .frame { aspect-ratio: 3 / 4; margin-bottom: 14px; }
+.collection-item strong { font: 700 1.125rem/1.25 var(--font-headline); }
+.collection-item .subtitle { font-size: 0.9rem; }
+
+/* New arrivals: image beside details */
+.arrivals { display: grid; gap: 48px; padding: 0; margin: 0; list-style: none; }
+.arrival { display: flex; gap: 24px; align-items: center; text-decoration: none; }
+.arrival .frame { flex: 0 0 min(33%, 200px); aspect-ratio: 1; background: var(--surface-container-lowest); box-shadow: var(--ambient-shadow); }
+.arrival-body { display: grid; gap: 4px; justify-items: start; }
+.arrival h3 { font-size: 1.25rem; font-weight: 700; line-height: 1.2; }
+.arrival:hover h3 { text-decoration: underline; text-underline-offset: 4px; }
+.arrival .muted { font-size: 0.9rem; line-height: 1.4; }
+.arrival-price { margin-top: 6px; font: 700 1.125rem var(--font-headline); }
+@media (prefers-color-scheme: dark) {
+  .spotlight-card::after { background: linear-gradient(to top, color-mix(in srgb, var(--surface) 90%, transparent), transparent 65%); }
+  .spotlight-text { color: var(--on-surface); }
+}
+
+.roaster-row { margin-bottom: 64px; scroll-margin-top: 80px; }
+.roaster-row-head { display: grid; gap: 2px; justify-items: start; margin-bottom: 24px; }
+.roaster-row h2 { margin: 0; }
+.roaster-row-head .eyebrow { margin-top: 8px; }
+.coffee-track { gap: 24px; list-style: none; }
+.coffee-track > li { flex: 0 0 256px; scroll-snap-align: start; }
+.coffee-card { display: grid; gap: 6px; text-decoration: none; }
+.coffee-card .frame { aspect-ratio: 4 / 5; margin-bottom: 10px; background: var(--surface-container-lowest); }
+/* Product shots of a bag on a plain background sit inset rather than cropped. */
+.frame-contain img { object-fit: contain; padding: 24px; }
+.coffee-card-title { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.coffee-card h3 { font-size: 1.125rem; font-weight: 700; line-height: 1.25; }
+.coffee-card:hover h3 { text-decoration: underline; text-underline-offset: 4px; }
+.coffee-card-price { font: 700 12px var(--font-headline); color: var(--secondary); white-space: nowrap; }
+.coffee-card .chips { padding-top: 4px; gap: 4px; }
 
 /* Bean page */
 .bean { display: grid; gap: 40px 56px; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); align-items: start; }
@@ -84,9 +135,28 @@ main { max-width: 1040px; margin: 0 auto; padding: 32px 24px 112px; }
 .spec dt { flex: 0 0 30%; font: 500 10px var(--font-headline); text-transform: uppercase; letter-spacing: 0.1rem; color: color-mix(in srgb, var(--on-surface-variant) 60%, transparent); }
 .spec dd { flex: 1; margin: 0; padding-bottom: 8px; border-bottom: 1px solid var(--ghost-border); font-size: 1.125rem; color: var(--primary); }
 
-.variants { display: grid; gap: 4px; padding: 0; margin: 0; list-style: none; }
-.variant { display: flex; justify-content: space-between; gap: 16px; padding: 16px 20px; border-radius: 6px; background: var(--surface-container-low); }
+/* Ordering */
+.order { display: grid; gap: 24px; }
+.variants { display: grid; gap: 4px; padding: 0; margin: 0; border: 0; }
+.variants legend { padding: 0; margin-bottom: 12px; }
+.variant { display: flex; justify-content: space-between; gap: 16px; padding: 16px 20px; border-radius: 6px; background: var(--surface-container-low); cursor: pointer; }
+.variant:has(input:checked) { background: var(--surface-tint); color: var(--on-primary); }
+.variant input { position: absolute; opacity: 0; pointer-events: none; }
+.variant:has(input:focus-visible) { outline: 2px solid var(--primary); outline-offset: 2px; }
 .variant-price { font: 700 1rem var(--font-headline); color: var(--primary); }
+.variant:has(input:checked) .variant-price { color: var(--on-primary); }
+.order-bar { display: flex; gap: 16px; align-items: center; }
+.stepper { display: flex; align-items: center; height: 56px; padding: 0 8px; border-radius: 6px; background: var(--surface-container-highest); }
+.stepper button { width: 40px; height: 40px; border: 0; background: none; color: var(--primary); font: 700 1.25rem var(--font-headline); cursor: pointer; }
+.stepper button:disabled { opacity: 0.3; cursor: default; }
+.stepper output { min-width: 28px; text-align: center; font: 700 1rem var(--font-headline); color: var(--primary); }
+.button {
+  flex: 1; display: grid; place-items: center; height: 56px; padding: 0 24px; border-radius: 6px;
+  background: linear-gradient(135deg, var(--surface-tint), var(--primary-container)); color: var(--on-primary);
+  font: 700 13px var(--font-headline); text-transform: uppercase; letter-spacing: 0.1rem; text-decoration: none;
+}
+.button:hover { background: var(--primary-container); }
+.order-note { font-size: 0.95rem; font-style: italic; }
 
 .note { padding: 24px; border-radius: 12px; background: var(--surface-container-low); font-style: italic; color: var(--on-surface-variant); }
 
@@ -95,6 +165,10 @@ main { max-width: 1040px; margin: 0 auto; padding: 32px 24px 112px; }
 .card { padding: 32px; border-radius: 12px; background: var(--surface-container-low); display: grid; gap: 24px; }
 .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
 .card-head h3 { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
+.card-title { display: grid; gap: 6px; justify-items: start; }
+.upvotes { flex: none; padding: 8px 12px; border-radius: 6px; background: var(--surface-container-high); font: 700 13px var(--font-headline); color: var(--primary); }
+.recipe-group { display: grid; gap: 16px; margin-bottom: 40px; }
+.recipe-group > h3.eyebrow { margin: 0; font-weight: 500; letter-spacing: 0.15rem; }
 .steps { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
 .step { display: flex; gap: 16px; align-items: flex-start; }
 .step-icon { flex: none; width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-container-highest); color: var(--primary); }

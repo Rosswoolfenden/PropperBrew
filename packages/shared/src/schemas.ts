@@ -32,6 +32,8 @@ export const RecipeStep = z.object({
   time: z.number().int().min(0).max(60 * 60 * 24),
   /** Cumulative water weight in grams at the end of this step. */
   water: z.number().min(0).max(5000).optional(),
+  /** Short heading for the step, e.g. "The bloom". */
+  title: z.string().trim().max(60).optional(),
   note: z.string().trim().max(200).optional(),
 });
 export type RecipeStep = z.infer<typeof RecipeStep>;

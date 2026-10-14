@@ -3,11 +3,13 @@ import { beansRouter } from "./routers/beans";
 import { meRouter } from "./routers/me";
 import { recipesRouter } from "./routers/recipes";
 import { reviewsRouter } from "./routers/reviews";
+import { roastersRouter } from "./routers/roasters";
 import { scannerRouter } from "./routers/scanner";
 import { shelfRouter } from "./routers/shelf";
 
 export const appRouter = router({
   beans: beansRouter,
+  roasters: roastersRouter,
   reviews: reviewsRouter,
   recipes: recipesRouter,
   shelf: shelfRouter,

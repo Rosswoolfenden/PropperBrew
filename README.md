@@ -45,9 +45,36 @@ Schema changes: edit `packages/db/src/schema.ts`, run `pnpm db:generate`, then `
 
 **Bag scanner.** The phone takes a photo, Claude vision reads the roaster and bean name, and `pg_trgm` fuzzy-matches them to beans.
 
+**Discovery and ordering.** `roasters.discover` returns roasters with something in stock, newest first, each with up to 8 of their coffees and a "from" price. Both apps lay these out like the Stitch Roaster Discovery screen: a roaster spotlight, "The Collection" grid of roasters, the newest arrivals, then a horizontally scrolling row per roaster (styled after Curated Collections). On a coffee's page you pick a size and quantity, then check out on the roaster's Shopify store (in an in-app browser sheet on mobile).
+
+**Recipes.** A recipe is written either by a community member (`user_id`) or by the roaster as their own recommendation (`roaster_id`); a check constraint keeps exactly one set. A coffee's brewing guide lists the roaster's recommendations first, then community recipes by upvotes. Anyone signed in can upvote (`recipes.toggleUpvote`) and add their own recipe from the app. Each step in `brew_recipes.steps` has a time, an optional cumulative water weight, title and note. Tapping a recipe opens a screen styled after the Stitch Recipe Details design: parameters, the coffee's flavour profile, numbered steps and a brew timer that follows them. The sample data includes three roaster recommendations and seven community recipes. Roasters can't add recommendations themselves yet; that belongs on the roaster profile page below.
+
 **Rest window.** Shelf entries with a roast date get a push notification when the coffee enters its peak window (`packages/shared/src/resting.ts`).
 
 **Security.** Shopify tokens are encrypted with AES-256-GCM. All data access goes through the API, which connects as `postgres`. RLS is enabled with no policies, so Supabase's auto-generated REST API exposes nothing. Clients authenticate with Supabase JWTs, which the API verifies via JWKS, or with the HS256 secret if one is set.
+
+## Design
+
+The UI follows the Stitch project "Elevated Brew" (Manrope headlines and labels, Newsreader body copy, sage primary, warm paper surfaces, no divider lines). Colour tokens live in `packages/shared/src/theme.ts`. The web app turns them into CSS custom properties (`apps/web/src/lib/theme-css.ts`), and the mobile app reads them through `apps/mobile/src/theme.ts` and the primitives in `apps/mobile/src/ui.tsx`.
+
+## Local preview (Docker)
+
+To look around without any keys or local tooling beyond Docker:
+
+```sh
+pnpm demo        # or: docker compose up --build
+```
+
+This starts the website on http://localhost:3000, the app's web build on http://localhost:8081 and the API on http://localhost:4000, with sample coffees from `e2e/db/seed.sql`. If those ports are in use, set `WEB_PORT`, `MOBILE_PORT` or `API_PORT`. Signing in, Shopify sync and the bag scanner need real credentials, so they won't work here. `docker compose down` discards the data, and the next start reseeds it.
+
+## End-to-end tests
+
+```sh
+corepack pnpm exec playwright install chromium   # once, from e2e/
+pnpm test:e2e
+```
+
+`e2e/setup-db.ts` starts a throwaway Postgres in Docker on :54329, loaded with `supabase/migrations` plus `e2e/db/seed.sql` by `e2e/db/docker-init.sh` (shared with `compose.yaml`), then Playwright boots the API (:4100), a production build of the Next site (:3100) and the Expo app on react-native-web (:8181). The tests check content, data flow and the applied design tokens in light and dark mode. Native-only features (camera capture, push) aren't covered.
 
 ## Changes from the original configs
 
@@ -58,7 +85,7 @@ Schema changes: edit `packages/db/src/schema.ts`, run `pnpm db:generate`, then `
 
 ## Not built yet
 
-- **Checkout.** The schema (`orders`, `order_lines`, `roasters.stripe_account_id`, `commission_bps`) is ready for Option 2: Stripe Connect plus Shopify `orderCreate`. The API routes, Stripe webhook and basket UI still need writing.
+- **In-app checkout.** Today "Order" opens the roaster's own Shopify checkout with the chosen size and quantity already in the cart (a cart permalink, `packages/shared/src/shopify.ts`), so PropperBrew takes no commission yet. The schema (`orders`, `order_lines`, `roasters.stripe_account_id`, `commission_bps`) is ready for Option 2: Stripe Connect plus Shopify `orderCreate`. The API routes, Stripe webhook and basket UI still need writing.
 - Web auth and the review/recipe forms. The tRPC mutations exist; only the UI is missing.
 - Recommendations: `pgvector` is enabled, but nothing uses embeddings yet.
 - Roaster-editable profile (city, roast days, shipping) on the `/shopify/app` page.

@@ -31,6 +31,20 @@ export const BREW_METHODS = [
 export const BrewMethod = z.enum(BREW_METHODS);
 export type BrewMethod = z.infer<typeof BrewMethod>;
 
+/** How each brew method is named on screen. */
+export const BREW_METHOD_LABELS: Record<BrewMethod, string> = {
+  v60: "V60 Pour-Over",
+  origami: "Origami Dripper",
+  kalita_wave: "Kalita Wave",
+  chemex: "Chemex",
+  aeropress: "AeroPress",
+  espresso: "Espresso",
+  french_press: "French Press",
+  moka_pot: "Moka Pot",
+  cold_brew: "Cold Brew",
+  clever_dripper: "Clever Dripper",
+};
+
 export const GRIND_OPTIONS = [
   "wholebean",
   "espresso",

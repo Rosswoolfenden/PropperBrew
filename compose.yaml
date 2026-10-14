@@ -1,0 +1,72 @@
+# Local preview of the whole stack with sample data and no real keys:  docker compose up --build
+# Website http://localhost:3000, app (web build) http://localhost:8081, API http://localhost:4000.
+# Sign-in, Shopify sync and the bag scanner need real credentials and won't work here.
+# `docker compose down` throws the data away; the next `up` reseeds it.
+
+name: propperbrew
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./supabase/migrations:/migrations:ro
+      - ./e2e/db:/fixtures:ro
+      - ./e2e/db/docker-init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    healthcheck:
+      # Only listens on TCP once the init script (migrations + seed) has finished.
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres"]
+      interval: 2s
+      retries: 30
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      PORT: "4000"
+      PUBLIC_API_URL: http://localhost:${API_PORT:-4000}
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/postgres
+      # Placeholders for local preview only.
+      TOKEN_ENCRYPTION_KEY: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=
+      SUPABASE_URL: http://127.0.0.1:54321
+      SUPABASE_JWT_SECRET: local-preview-secret-at-least-32-characters
+      SHOPIFY_API_KEY: placeholder
+      SHOPIFY_API_SECRET: placeholder
+      SHOPIFY_SCOPES: read_products
+    ports:
+      - ${API_PORT:-4000}:4000
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4000/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 2s
+      retries: 30
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    environment:
+      # Only used server-side, so it can use the compose network name.
+      NEXT_PUBLIC_API_URL: http://api:4000
+    ports:
+      - ${WEB_PORT:-3000}:3000
+    depends_on:
+      api:
+        condition: service_healthy
+
+  mobile:
+    build:
+      context: .
+      dockerfile: apps/mobile/Dockerfile.web
+      args:
+        # Called from your browser, so it has to be the API's address on the host.
+        EXPO_PUBLIC_API_URL: http://localhost:${API_PORT:-4000}
+    ports:
+      - ${MOBILE_PORT:-8081}:80
+    depends_on:
+      api:
+        condition: service_healthy

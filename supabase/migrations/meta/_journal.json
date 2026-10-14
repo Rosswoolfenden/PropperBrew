@@ -15,6 +15,13 @@
       "when": 1792002470007,
       "tag": "20261014182750_extensions_and_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792009502870,
+      "tag": "20261014202502_roaster_recipes",
+      "breakpoints": true
     }
   ]
 }

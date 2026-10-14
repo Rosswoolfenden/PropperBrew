@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { TRPCClientError } from "@trpc/client";
-import { brewRatio, formatGbp, humanize } from "@propperbrew/shared";
+import { BREW_METHOD_LABELS, brewRatio, formatAltitude, formatPriceFrom, humanize } from "@propperbrew/shared";
+import { OrderForm } from "@/components/order-form";
 import { Rating, Stars } from "@/components/rating";
 import { api } from "@/lib/trpc";
 
@@ -33,16 +34,16 @@ export default async function BeanPage({ params }: { params: Params }) {
   const bean = await loadBean(params);
   const [reviews, recipes] = await Promise.all([
     api.reviews.forBean.query({ coffeeBeanId: bean.id, limit: 10 }),
-    api.recipes.forBean.query({ coffeeBeanId: bean.id, limit: 5 }),
+    api.recipes.forBean.query({ coffeeBeanId: bean.id, limit: 10 }),
   ]);
 
   const specs: [string, string | null][] = [
-    ["Origin", [bean.region, bean.originCountry].filter(Boolean).join(", ") || null],
+    ["Roaster", [bean.roaster.name, bean.roaster.city].filter(Boolean).join(", ")],
+    ["Region", [bean.region, bean.originCountry].filter(Boolean).join(", ") || null],
     ["Producer", bean.producer],
+    ["Altitude", bean.altitudeMasl ? formatAltitude(bean.altitudeMasl) : null],
     ["Process", bean.process && humanize(bean.process)],
     ["Varietals", bean.varietals.join(", ") || null],
-    ["Altitude", bean.altitudeMasl ? `${bean.altitudeMasl} masl` : null],
-    ["Roast", bean.roastLevel && humanize(bean.roastLevel)],
   ];
 
   const jsonLd = {
@@ -66,6 +67,9 @@ export default async function BeanPage({ params }: { params: Params }) {
 
   const prices = bean.variants.map((v) => v.pricePence);
   const lowestPrice = prices.length > 0 ? Math.min(...prices) : null;
+  const [firstVariant, ...otherVariants] = bean.variants;
+  const orderable =
+    firstVariant && bean.checkoutDomain ? { variants: [firstVariant, ...otherVariants] as const, domain: bean.checkoutDomain } : null;
   const subtitle = [bean.originCountry, bean.roastLevel && `${humanize(bean.roastLevel)} roast`].filter(Boolean).join(" • ");
 
   return (
@@ -74,18 +78,9 @@ export default async function BeanPage({ params }: { params: Params }) {
       <div className="bean">
         <div className="frame">{bean.imageUrl && <img src={bean.imageUrl} alt={bean.name} />}</div>
         <div className="bean-info">
-          <p className="eyebrow">
-            {bean.roaster.name}
-            {bean.roaster.city ? ` · ${bean.roaster.city}` : ""}
-          </p>
           <div className="title-row">
             <h1 className="display">{bean.name}</h1>
-            {lowestPrice !== null && (
-              <span className="price">
-                {new Set(prices).size > 1 ? "from " : ""}
-                {formatGbp(lowestPrice)}
-              </span>
-            )}
+            {lowestPrice !== null && <span className="price">{formatPriceFrom(lowestPrice, new Set(prices).size)}</span>}
           </div>
           {subtitle && <p className="subtitle">{subtitle}</p>}
           {bean.avgRating !== null && <Rating value={bean.avgRating} count={bean.reviewCount} />}
@@ -110,54 +105,60 @@ export default async function BeanPage({ params }: { params: Params }) {
           </dl>
 
           <section>
-            <h2>Buy</h2>
-            {bean.isArchived || bean.variants.length === 0 ? (
-              <p className="note">This lot has sold out. Reviews and recipes stay here for reference.</p>
+            <h2>Order</h2>
+            {orderable ? (
+              <OrderForm variants={orderable.variants} checkoutDomain={orderable.domain} roasterName={bean.roaster.name} />
             ) : (
-              <ul className="variants">
-                {bean.variants.map((v) => (
-                  <li key={v.id} className="variant">
-                    <span>{v.title}</span>
-                    <span className="variant-price">{formatGbp(v.pricePence)}</span>
-                  </li>
-                ))}
-              </ul>
+              <p className="note">This lot has sold out. Reviews and recipes stay here for reference.</p>
             )}
           </section>
         </div>
       </div>
 
       <section className="section">
-        <h2>How people are brewing it</h2>
+        <h2>Brewing guide</h2>
         {recipes.length === 0 && <p className="muted">No recipes yet — be the first to share your dial-in.</p>}
-        <div className="stack">
-          {recipes.map((r) => (
-            <div key={r.id} className="card">
-              <div className="card-head">
-                <h3>{humanize(r.brewMethod)}</h3>
-                <span className="eyebrow">
-                  ▲ {r.upvotesCount} · by {r.user.username}
-                </span>
+        {[
+          { label: "From the roaster", items: recipes.filter((r) => r.author.type === "roaster") },
+          { label: "From the community", items: recipes.filter((r) => r.author.type === "user") },
+        ]
+          .filter((group) => group.items.length > 0)
+          .map((group) => (
+            <section key={group.label} className="recipe-group" aria-label={group.label}>
+              <h3 className="eyebrow">{group.label}</h3>
+              <div className="stack">
+                {group.items.map((r) => (
+                  <div key={r.id} className="card">
+                    <div className="card-head">
+                      <div className="card-title">
+                        {r.author.type === "roaster" && <span className="chip chip-sm">Roaster&apos;s pick</span>}
+                        <h3>{BREW_METHOD_LABELS[r.brewMethod]}</h3>
+                        <span className="eyebrow">By {r.author.type === "roaster" ? r.author.name : r.author.username}</span>
+                      </div>
+                      <span className="upvotes" aria-label={`${r.upvotesCount} upvotes`}>
+                        ↑ {r.upvotesCount}
+                      </span>
+                    </div>
+                    <div className="steps">
+                      <Step icon="scale" title="Ratio">
+                        {r.coffeeDoseG}g → {r.waterWeightG}g ({brewRatio(r.coffeeDoseG, r.waterWeightG)})
+                      </Step>
+                      {r.waterTempC ? (
+                        <Step icon="thermostat" title="Temperature">
+                          {r.waterTempC}°C
+                        </Step>
+                      ) : null}
+                      {r.grinderModel || r.grindSetting ? (
+                        <Step icon="grain" title="Grind">
+                          {[r.grinderModel, r.grindSetting].filter(Boolean).join(" @ ")}
+                        </Step>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="steps">
-                <Step icon="scale" title="Ratio">
-                  {r.coffeeDoseG}g → {r.waterWeightG}g ({brewRatio(r.coffeeDoseG, r.waterWeightG)})
-                </Step>
-                {r.waterTempC ? (
-                  <Step icon="thermostat" title="Temperature">
-                    {r.waterTempC}°C
-                  </Step>
-                ) : null}
-                {r.grinderModel && (
-                  <Step icon="grain" title="Grind">
-                    {r.grinderModel}
-                    {r.grindSetting ? ` @ ${r.grindSetting}` : ""}
-                  </Step>
-                )}
-              </div>
-            </div>
+            </section>
           ))}
-        </div>
       </section>
 
       <section className="section">

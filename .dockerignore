@@ -1,0 +1,15 @@
+**/node_modules
+**/.next
+**/.expo
+**/.turbo
+**/dist
+**/*.tsbuildinfo
+apps/mobile/ios
+apps/mobile/android
+e2e/test-results
+e2e/playwright-report
+.git
+.env
+.env.*
+!.env.example
+.DS_Store
