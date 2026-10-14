@@ -1,0 +1,109 @@
+/* Colour tokens (--primary, --surface, …) are injected from @propperbrew/shared in layout.tsx. */
+:root {
+  --font-headline: var(--font-manrope), system-ui, sans-serif;
+  --font-body: var(--font-newsreader), Georgia, serif;
+  --ghost-border: color-mix(in srgb, var(--outline-variant) 20%, transparent);
+  --ambient-shadow: 0 4px 32px -4px color-mix(in srgb, var(--on-surface) 4%, transparent);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--on-surface);
+  font: 18px/1.55 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+h1, h2, h3 { font-family: var(--font-headline); color: var(--primary); margin: 0; }
+h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 32px; }
+p { margin: 0; }
+main { max-width: 1040px; margin: 0 auto; padding: 32px 24px 112px; }
+
+/* Glass header: surface at 80% with a blur, no bottom rule. */
+.site-header {
+  position: sticky; top: 0; z-index: 50;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+}
+.site-header-inner { max-width: 1040px; margin: 0 auto; padding: 16px 24px; }
+.logo { font: 800 1.25rem var(--font-headline); letter-spacing: -0.04em; color: var(--primary); text-decoration: none; }
+
+/* Type roles */
+.eyebrow {
+  font: 500 10px/1.4 var(--font-headline);
+  text-transform: uppercase; letter-spacing: 0.15rem;
+  color: var(--on-surface-variant);
+}
+.display { font-size: clamp(2.25rem, 6vw, 3.5rem); font-weight: 800; letter-spacing: -0.05em; line-height: 1; }
+.lead { font-size: 1.25rem; line-height: 1.6; color: color-mix(in srgb, var(--on-surface) 80%, transparent); }
+.subtitle { font-size: 1.125rem; font-style: italic; color: var(--on-surface-variant); }
+.muted { color: var(--on-surface-variant); }
+.italic { font-style: italic; }
+
+.intro { display: grid; gap: 16px; margin-bottom: 64px; max-width: 640px; }
+.section { margin-top: 96px; }
+
+/* Flavour chips: warm terracotta signals taste. */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 0; list-style: none; }
+.chip {
+  padding: 6px 16px; border-radius: 12px;
+  background: var(--secondary-container); color: var(--on-secondary-container);
+  font: 500 12px/1.4 var(--font-headline); text-transform: uppercase; letter-spacing: 0.05em;
+}
+.chip-sm { padding: 2px 8px; border-radius: 2px; font-size: 9px; }
+
+.rating { display: inline-flex; align-items: baseline; gap: 6px; font-family: var(--font-headline); }
+.stars { color: var(--primary); letter-spacing: 2px; font-size: 14px; }
+.stars .off { opacity: 0.25; }
+.rating-count { font-size: 12px; color: var(--on-surface-variant); }
+
+/* Image frames: tonal block behind so a missing image still holds the layout. */
+.frame { overflow: hidden; border-radius: 12px; background: var(--surface-container-high); }
+.frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* Home: "Seasonal harvest" rows */
+.bean-grid { display: grid; gap: 48px 32px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); }
+.bean-row { display: flex; gap: 24px; align-items: center; text-decoration: none; }
+.bean-row .frame { flex: 0 0 33%; aspect-ratio: 1; background: var(--surface-container-lowest); box-shadow: var(--ambient-shadow); }
+.bean-row-body { display: grid; gap: 6px; justify-items: start; min-width: 0; }
+.bean-row h3 { font-size: 1.25rem; font-weight: 700; line-height: 1.2; }
+.bean-row:hover h3 { text-decoration: underline; text-underline-offset: 4px; }
+.bean-row .notes { font-size: 0.9rem; color: var(--on-surface-variant); }
+
+/* Bean page */
+.bean { display: grid; gap: 40px 56px; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); align-items: start; }
+@media (max-width: 720px) { .bean { grid-template-columns: 1fr; } }
+.bean .frame { aspect-ratio: 4 / 5; }
+.bean-info { display: grid; gap: 24px; }
+.title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.price { font-size: 1.25rem; font-style: italic; color: var(--secondary); white-space: nowrap; }
+
+.specs { display: grid; gap: 24px; margin: 16px 0 0; }
+.spec { display: flex; align-items: baseline; gap: 32px; }
+.spec dt { flex: 0 0 30%; font: 500 10px var(--font-headline); text-transform: uppercase; letter-spacing: 0.1rem; color: color-mix(in srgb, var(--on-surface-variant) 60%, transparent); }
+.spec dd { flex: 1; margin: 0; padding-bottom: 8px; border-bottom: 1px solid var(--ghost-border); font-size: 1.125rem; color: var(--primary); }
+
+.variants { display: grid; gap: 4px; padding: 0; margin: 0; list-style: none; }
+.variant { display: flex; justify-content: space-between; gap: 16px; padding: 16px 20px; border-radius: 6px; background: var(--surface-container-low); }
+.variant-price { font: 700 1rem var(--font-headline); color: var(--primary); }
+
+.note { padding: 24px; border-radius: 12px; background: var(--surface-container-low); font-style: italic; color: var(--on-surface-variant); }
+
+/* Recipes: brewing-guide tiles */
+.stack { display: grid; gap: 24px; }
+.card { padding: 32px; border-radius: 12px; background: var(--surface-container-low); display: grid; gap: 24px; }
+.card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.card-head h3 { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
+.steps { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.step { display: flex; gap: 16px; align-items: flex-start; }
+.step-icon { flex: none; width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-container-highest); color: var(--primary); }
+.step h4 { margin: 0 0 4px; font: 700 12px var(--font-headline); text-transform: uppercase; letter-spacing: 0.05em; color: var(--primary); }
+.step p { color: var(--on-surface-variant); }
+.material-symbols-outlined { font-variation-settings: "FILL" 0, "wght" 300, "GRAD" 0, "opsz" 24; }
+
+/* Reviews: journal entries, separated by space not rules */
+.review { display: grid; gap: 12px; }
+.review-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.review-author { font: 700 12px var(--font-headline); text-transform: uppercase; letter-spacing: 0.1rem; color: var(--secondary); }
+.review-body { font-size: 1.125rem; line-height: 1.6; color: var(--on-surface-variant); }

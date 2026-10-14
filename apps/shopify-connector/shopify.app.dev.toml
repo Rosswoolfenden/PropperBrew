@@ -1,0 +1,38 @@
+# Used by `pnpm --filter @propperbrew/shopify-connector dev` (shopify app dev --config dev).
+# The CLI starts apps/api via shopify.web.toml behind a Cloudflare tunnel and rewrites
+# application_url / redirect_urls to the tunnel URL. Relative webhook URIs resolve against it.
+
+name = "PropperBrew (Dev)"
+client_id = "YOUR_DEV_SHOPIFY_CLIENT_ID"
+application_url = "https://localhost:4000/shopify/app"
+embedded = false
+
+[build]
+automatically_update_urls_on_dev = true
+dev_store_url = "test-uk-roaster-dev.myshopify.com"
+
+[access_scopes]
+scopes = "read_products,read_inventory,read_locations,write_orders,read_orders,read_fulfillments,read_shipping"
+
+[auth]
+redirect_urls = [ "https://localhost:4000/api/shopify/auth/callback" ]
+
+[webhooks]
+api_version = "2026-04"
+
+  [[webhooks.subscriptions]]
+  topics = [
+    "products/create",
+    "products/update",
+    "products/delete",
+    "inventory_levels/update",
+    "orders/fulfilled",
+    "orders/partially_fulfilled",
+    "fulfillments/create",
+    "app/uninstalled",
+  ]
+  uri = "/webhooks/shopify/local-router"
+
+  [[webhooks.subscriptions]]
+  compliance_topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
+  uri = "/webhooks/shopify/gdpr"

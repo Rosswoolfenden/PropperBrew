@@ -1,0 +1,63 @@
+project_id = "propperbrew"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+# Drizzle Studio / DBeaver: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.pooler]
+enabled = false
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://127.0.0.1"
+
+[storage]
+enabled = true
+# Bag photos straight from the phone camera
+file_size_limit = "10MiB"
+
+[storage.buckets.review-photos]
+public = true
+file_size_limit = "10MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp", "image/heic"]
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = [
+  "http://localhost:3000/**",
+  "exp://127.0.0.1:8081/--/**",
+  "propperbrew://auth/callback"
+]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
+
+[auth.external.apple]
+enabled = false
+client_id = "env(APPLE_AUTH_CLIENT_ID)"
+secret = "env(APPLE_AUTH_SECRET)"
+
+[auth.external.google]
+enabled = false
+client_id = "env(GOOGLE_AUTH_CLIENT_ID)"
+secret = "env(GOOGLE_AUTH_SECRET)"

@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.next/
+.expo/
+.turbo/
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+.DS_Store
+supabase/.branches
+supabase/.temp
+apps/mobile/ios
+apps/mobile/android
+.shopify/
+# Contains a plaintext Stitch API key
+.vscode/mcp.json

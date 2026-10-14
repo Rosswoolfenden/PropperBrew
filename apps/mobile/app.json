@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "PropperBrew",
+    "slug": "propperbrew",
+    "scheme": "propperbrew",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "uk.co.propperbrew.app",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "uk.co.propperbrew.app"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "PropperBrew uses the camera to scan coffee bags and find their reviews and recipes."
+        }
+      ],
+      "expo-notifications",
+      "expo-font",
+      "expo-splash-screen"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

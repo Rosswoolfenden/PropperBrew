@@ -1,0 +1,45 @@
+{
+  "name": "@propperbrew/mobile",
+  "version": "0.0.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "dev": "expo start",
+    "ios": "expo run:ios",
+    "android": "expo run:android",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@expo-google-fonts/manrope": "^0.4.2",
+    "@expo-google-fonts/newsreader": "^0.4.1",
+    "@expo/metro-runtime": "~57.0.17",
+    "@expo/vector-icons": "^15.1.1",
+    "@propperbrew/shared": "workspace:*",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@supabase/supabase-js": "^2.117.3",
+    "@tanstack/react-query": "^5.104.2",
+    "@trpc/client": "^11.19.0",
+    "@trpc/tanstack-react-query": "^11.19.0",
+    "expo": "^57.0.29",
+    "expo-camera": "~57.0.6",
+    "expo-constants": "~57.0.22",
+    "expo-font": "~57.0.4",
+    "expo-linking": "~57.0.13",
+    "expo-notifications": "~57.0.23",
+    "expo-router": "~57.0.27",
+    "expo-splash-screen": "~57.0.10",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.2",
+    "react-native-web": "^0.21.4",
+    "superjson": "^2.2.6"
+  },
+  "devDependencies": {
+    "@propperbrew/api": "workspace:*",
+    "@types/react": "~19.2.18",
+    "typescript": "^5.9.3"
+  }
+}

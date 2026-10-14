@@ -1,0 +1,14 @@
+{
+  "name": "@propperbrew/shopify-connector",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "shopify": "shopify",
+    "dev:shopify": "shopify app dev --config dev",
+    "deploy": "shopify app deploy",
+    "deploy:dev": "shopify app deploy --config dev"
+  },
+  "devDependencies": {
+    "@shopify/cli": "^4.9.3"
+  }
+}

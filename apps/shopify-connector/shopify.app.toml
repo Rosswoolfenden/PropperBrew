@@ -1,0 +1,55 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+name = "PropperBrew"
+client_id = "YOUR_SHOPIFY_CLIENT_ID"
+# Served by apps/api (routes/shopify.ts). Roasters land here from their Shopify admin.
+application_url = "https://api.yourcoffeeapp.co.uk/shopify/app"
+# Not embedded: roasters don't need to manage anything inside Shopify admin for the MVP,
+# so we skip App Bridge/session tokens and use the plain authorization code grant.
+embedded = false
+
+[build]
+automatically_update_urls_on_dev = true
+dev_store_url = "test-uk-roaster.myshopify.com"
+include_config_on_deploy = true
+
+[access_scopes]
+# Scopes needed to sync beans, check stock levels, and push paid orders into their queue
+scopes = "read_products,read_inventory,read_locations,write_orders,read_orders,read_fulfillments,read_shipping"
+
+[auth]
+redirect_urls = [ "https://api.yourcoffeeapp.co.uk/api/shopify/auth/callback" ]
+
+[webhooks]
+api_version = "2026-04"
+
+  # 1. Product & Inventory Sync
+  [[webhooks.subscriptions]]
+  topics = [ "products/create", "products/update" ]
+  uri = "https://api.yourcoffeeapp.co.uk/webhooks/shopify/products-sync"
+
+  [[webhooks.subscriptions]]
+  topics = [ "products/delete" ]
+  # Archives the bean so reviews/recipes stay live, but disables buying
+  uri = "https://api.yourcoffeeapp.co.uk/webhooks/shopify/products-archive"
+
+  [[webhooks.subscriptions]]
+  topics = [ "inventory_levels/update" ]
+  uri = "https://api.yourcoffeeapp.co.uk/webhooks/shopify/inventory-sync"
+
+  # 2. Order & Fulfilment (push notifications: "Your beans have been roasted & shipped!")
+  [[webhooks.subscriptions]]
+  topics = [ "orders/fulfilled", "orders/partially_fulfilled", "fulfillments/create" ]
+  uri = "https://api.yourcoffeeapp.co.uk/webhooks/shopify/order-fulfillment"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "https://api.yourcoffeeapp.co.uk/webhooks/shopify/app-uninstalled"
+
+  # 3. Mandatory GDPR / UK privacy webhooks
+  [[webhooks.subscriptions]]
+  compliance_topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
+  uri = "https://api.yourcoffeeapp.co.uk/webhooks/shopify/gdpr"
+
+[pos]
+embedded = false

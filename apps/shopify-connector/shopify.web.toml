@@ -1,0 +1,8 @@
+# Tells `shopify app dev` how to run our backend. The CLI injects PORT, HOST/APP_URL,
+# SHOPIFY_API_KEY, SHOPIFY_API_SECRET and SCOPES, which apps/api/src/env.ts reads.
+name = "api"
+roles = ["frontend", "backend"]
+webhooks_path = "/webhooks/shopify/app-uninstalled"
+
+[commands]
+dev = "pnpm --filter @propperbrew/api dev"

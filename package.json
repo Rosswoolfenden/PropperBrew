@@ -1,0 +1,22 @@
+{
+  "name": "propperbrew",
+  "private": true,
+  "packageManager": "pnpm@12.11.2",
+  "engines": {
+    "node": ">=20.18"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "typecheck": "turbo run typecheck",
+    "db:generate": "pnpm --filter @propperbrew/db db:generate",
+    "db:migrate": "pnpm --filter @propperbrew/db db:migrate",
+    "db:studio": "pnpm --filter @propperbrew/db db:studio",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop"
+  },
+  "devDependencies": {
+    "turbo": "^2.11.8",
+    "typescript": "^5.9.3"
+  }
+}
