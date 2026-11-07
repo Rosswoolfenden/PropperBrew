@@ -176,6 +176,65 @@ test.describe("discover", () => {
   });
 });
 
+test.describe("search", () => {
+  const results = (page: Page) => page.getByRole("list", { name: "Results" }).filter({ visible: true }).getByRole("listitem");
+  const status = (page: Page) => page.getByRole("status").filter({ visible: true });
+  const chip = (page: Page, group: string, name: string) =>
+    page.getByRole("group", { name: group }).filter({ visible: true }).getByRole("button", { name, exact: true });
+
+  test("opens from Discover and finds coffees as you type", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Search coffees" }).click();
+    await expect(page).toHaveURL("/search");
+    await expect(screenHeading(page, "Find your next coffee")).toBeVisible();
+    await expect(status(page)).toHaveText("3 coffees");
+    await expect(results(page)).toHaveCount(3);
+
+    const box = page.getByRole("searchbox", { name: "Search coffees" });
+    await expect(box).toBeFocused();
+    await box.fill("jasmine");
+    await expect(status(page)).toHaveText("1 coffee");
+    await expect(results(page)).toHaveCount(1);
+    await expect(results(page).first()).toContainText(seed.kochere.name);
+    await expect(results(page).first()).toContainText("Hackney Heights · Ethiopia · Notes of blueberry & jasmine");
+
+    await results(page).first().click();
+    await expect(page).toHaveURL(`/bean/${seed.kochere.roasterSlug}/${seed.kochere.slug}`);
+  });
+
+  test("filters, sorts and clears", async ({ page }) => {
+    await page.goto("/search");
+    await expect(status(page)).toHaveText("3 coffees");
+    await chip(page, "Sort", "Lowest price").click();
+    await expect(results(page).nth(0)).toContainText(seed.cerrado.name);
+    await expect(results(page).nth(0)).toContainText("£9.50");
+    await expect(results(page).nth(2)).toContainText(seed.kochere.name);
+
+    await chip(page, "Origin", "Colombia").click();
+    await expect(chip(page, "Origin", "Colombia")).toHaveAttribute("aria-selected", "true");
+    await expect(results(page)).toHaveCount(1);
+    await expect(results(page).first()).toContainText(seed.inStock.name);
+    await chip(page, "Origin", "Colombia").click();
+    await expect(results(page)).toHaveCount(3);
+
+    await chip(page, "Price", "Under £10").click();
+    await expect(results(page)).toHaveCount(1);
+    await chip(page, "More", "Include sold out").click();
+    // Sold-out coffees have no price to compare, so a price cap still leaves them out.
+    await expect(results(page)).toHaveCount(1);
+    await chip(page, "Price", "Under £10").click();
+    await expect(status(page)).toHaveText("5 coffees");
+    await expect(results(page).filter({ hasText: "Sold out" })).toHaveCount(2);
+
+    await page.getByRole("searchbox", { name: "Search coffees" }).fill("zzz");
+    await expect(page.getByText("No coffees match. Try fewer filters or different words.")).toBeVisible();
+    await page.getByRole("button", { name: "Clear search" }).click();
+    await expect(status(page)).toHaveText("3 coffees");
+    await expect(page.getByRole("searchbox", { name: "Search coffees" })).toHaveValue("");
+    await expect(chip(page, "More", "Include sold out")).toHaveAttribute("aria-selected", "false");
+  });
+});
+
 test.describe("bean", () => {
   test("shows specs, prices and recipes", async ({ page }) => {
     await page.goto(beanPath);

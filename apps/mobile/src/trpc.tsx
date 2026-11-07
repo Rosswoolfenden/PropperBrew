@@ -7,7 +7,7 @@ import superjson from "superjson";
 import type { AppRouter } from "@propperbrew/api/router";
 import { supabase } from "./supabase";
 
-export const { TRPCProvider, useTRPC } = createTRPCContext<AppRouter>();
+export const { TRPCProvider, useTRPC, useTRPCClient } = createTRPCContext<AppRouter>();
 export type RouterOutputs = inferRouterOutputs<AppRouter>;
 
 const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:4000";

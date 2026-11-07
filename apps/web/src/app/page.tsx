@@ -25,6 +25,12 @@ export default async function DiscoverPage() {
     <>
       {/* The design opens straight onto the spotlight; the heading is for screen readers and search. */}
       <h1 className="visually-hidden">Discover UK specialty coffee</h1>
+      <form action="/search" role="search" className="search-bar discover-search">
+        <input type="search" name="q" placeholder="Coffee or tasting note" aria-label="Search coffees" />
+        <button type="submit" className="button button-sm">
+          Search
+        </button>
+      </form>
       {roasters.length === 0 ? (
         <p className="muted">No coffees to order yet. Roasters appear here once they connect their shop.</p>
       ) : (

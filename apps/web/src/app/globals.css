@@ -188,7 +188,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 32px 24px 112px; }
 .site-nav { display: flex; align-items: center; gap: 20px; }
 .nav-link {
   font: 700 11px var(--font-headline); text-transform: uppercase; letter-spacing: 0.1rem;
-  color: var(--primary); text-decoration: none; background: none; border: 0; padding: 8px 0; cursor: pointer;
+  color: var(--primary); text-decoration: none; background: none; border: 0; padding: 8px 0; cursor: pointer; white-space: nowrap;
 }
 .nav-link:hover { text-decoration: underline; text-underline-offset: 4px; }
 .nav-user { font: italic 0.95rem var(--font-body); color: var(--on-surface-variant); max-width: 16ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -196,7 +196,16 @@ main { max-width: 1040px; margin: 0 auto; padding: 32px 24px 112px; }
 button.button { border: 0; cursor: pointer; width: 100%; }
 button.button:disabled { opacity: 0.6; cursor: default; }
 .button-shopify { background: var(--primary); }
-@media (max-width: 480px) { .nav-user { display: none; } .site-nav { gap: 14px; } }
+.nav-search { display: inline-flex; align-items: center; gap: 6px; }
+/* Phones: logo, search icon, "For roasters" and Sign in on one line down to 360px wide. */
+@media (max-width: 480px) {
+  .nav-user, .nav-search-label { display: none; }
+  .site-header-inner { gap: 12px; }
+  .logo { font-size: 1.1rem; }
+  .site-nav { gap: 10px; }
+  .site-nav .nav-link, .site-nav .button-sm { letter-spacing: 0.04rem; }
+  .site-nav .button-sm { padding: 0 12px; }
+}
 
 /* Forms */
 .auth-page { max-width: 420px; margin: 24px auto 0; display: grid; gap: 40px; }
@@ -347,3 +356,17 @@ button.button:disabled { opacity: 0.6; cursor: default; }
 .rec-step-note { grid-column: 2 / -1; }
 .rec-step-number { font: 800 1.75rem var(--font-headline); color: color-mix(in srgb, var(--outline-variant) 70%, transparent); align-self: center; }
 @media (max-width: 640px) { .rec-step { grid-template-columns: 1fr; } .rec-step-note { grid-column: auto; } }
+
+/* Search */
+.search-bar { display: flex; gap: 12px; align-items: stretch; margin-bottom: 32px; }
+.search-bar input { flex: 1; min-width: 0; font: 1.05rem var(--font-body); color: var(--on-surface); background: var(--surface-container-highest); border: 0; border-bottom: 2px solid transparent; border-radius: 6px; padding: 14px 16px; outline: none; }
+.search-bar input:focus { border-bottom-color: var(--primary); }
+.search-bar .button { flex: none; width: auto; height: auto; padding: 0 24px; }
+.discover-search { margin-bottom: 48px; }
+.filters { display: grid; gap: 16px; margin-bottom: 32px; }
+.filter-group { display: grid; gap: 8px; }
+.filter-chip { padding: 8px 14px; border-radius: 12px; background: var(--surface-container-high); font: 500 11px var(--font-headline); text-transform: uppercase; letter-spacing: 0.08em; color: var(--on-surface-variant); text-decoration: none; }
+.filter-chip:hover { background: var(--surface-container-highest); }
+.filter-chip.on { background: var(--surface-tint); color: var(--on-primary); }
+.results-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 24px; }
+.pager { display: flex; justify-content: space-between; margin-top: 48px; }

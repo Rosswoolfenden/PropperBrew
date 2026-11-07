@@ -43,6 +43,7 @@ export default function RootLayout() {
         />
         <Stack.Screen name="scan" options={{ title: "Scan a bag", presentation: "modal" }} />
         <Stack.Screen name="shelf" options={{ title: "My shelf" }} />
+        <Stack.Screen name="search" options={{ title: "Search" }} />
         <Stack.Screen
           name="sign-in"
           options={{

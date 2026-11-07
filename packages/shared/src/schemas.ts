@@ -70,17 +70,27 @@ export const ListRecipesInput = z.object({
   limit: z.number().int().min(1).max(50).default(20),
 });
 
+export const SEARCH_SORTS = ["newest", "top_rated", "price_low"] as const;
+export type SearchSort = (typeof SEARCH_SORTS)[number];
+export const SEARCH_SORT_LABELS: Record<SearchSort, string> = { newest: "Newest", top_rated: "Top rated", price_low: "Lowest price" };
+/** Price filter options: "Under £10" etc. */
+export const SEARCH_MAX_PRICES = [1000, 1500, 2000] as const;
+
+/** Search and filter coffees. By default only what you can buy right now. */
 export const BeanSearchInput = z.object({
   query: z.string().trim().max(120).optional(),
-  originCountry: z.string().optional(),
+  originCountry: z.string().trim().max(60).optional(),
   process: Process.optional(),
   roastLevel: RoastLevel.optional(),
   decaf: z.boolean().optional(),
-  inStockOnly: z.boolean().default(false),
+  inStockOnly: z.boolean().default(true),
+  /** Coffees with an in-stock size at or under this price. */
+  maxPricePence: z.number().int().positive().max(100_000).optional(),
+  sort: z.enum(SEARCH_SORTS).default("newest"),
   limit: z.number().int().min(1).max(50).default(24),
-  cursor: z.string().optional(),
+  offset: z.number().int().min(0).max(10_000).default(0),
 });
-export type BeanSearchInput = z.infer<typeof BeanSearchInput>;
+export type BeanSearchInput = z.input<typeof BeanSearchInput>;
 
 export const ShelfEntryInput = z.object({
   coffeeBeanId: z.uuid(),

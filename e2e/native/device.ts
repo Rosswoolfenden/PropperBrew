@@ -3,7 +3,8 @@
  * uiautomator, scroll and tap. Enough for end-to-end checks without extra tooling.
  */
 import { execFileSync } from "node:child_process";
-import { join } from "node:path";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 const adbPath = process.env.ANDROID_HOME ? join(process.env.ANDROID_HOME, "platform-tools", "adb") : "adb";
 const EXPO_GO = "host.exp.exponent";
@@ -153,6 +154,13 @@ export class Device {
     await sleep(400);
   }
 
+  /** Type into the focused field. Letters and digits only: `input text` mangles anything else. */
+  async type(text: string) {
+    if (!/^[a-z0-9]+$/i.test(text)) throw new Error(`Can't type ${JSON.stringify(text)}: letters and digits only`);
+    adb("shell", "input", "text", text);
+    await sleep(400);
+  }
+
   async swipeLeftAt(label: string | RegExp) {
     const node = this.find(await this.screen(), label);
     if (!node) throw new Error(`Nothing to swipe: ${label}`);
@@ -165,6 +173,12 @@ export class Device {
     return adb("logcat", "-d", "-v", "brief", "ReactNativeJS:E", "*:S")
       .split("\n")
       .filter((l) => l.startsWith("E/ReactNativeJS"));
+  }
+
+  /** Save what's on screen, to see why a case failed. */
+  screenshot(file: string) {
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, execFileSync(adbPath, ["exec-out", "screencap", "-p"], { timeout: 20_000 }));
   }
 
   clearLog() {

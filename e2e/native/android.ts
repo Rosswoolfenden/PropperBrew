@@ -56,6 +56,28 @@ const cases: [name: string, run: (d: Device) => Promise<void>][] = [
     },
   ],
   [
+    "search: opens from Discover, finds by tasting note and filters",
+    async (d) => {
+      await d.launch("/");
+      await d.tap("Search coffees");
+      await d.expect(["Find your next coffee", /^3 coffees$/i]);
+      // The field is focused when the screen opens.
+      await d.type("jasmine");
+      await d.expect([/^1 coffee$/i, seed.kochere.name]);
+      await d.tap(seed.kochere.name);
+      await d.expect(["Ethiopia • Light roast", "Order · £14.00"]);
+    },
+  ],
+  [
+    "search: filter chips narrow the results",
+    async (d) => {
+      await d.launch("/search");
+      await d.expect([/^3 coffees$/i]);
+      await d.tap(/^under £10$/i);
+      await d.expect([/^1 coffee$/i, seed.cerrado.name]);
+    },
+  ],
+  [
     "roaster page: story, current roasts and the roastery",
     async (d) => {
       await d.launch(`/roaster/${seed.roaster.slug}`);
@@ -200,8 +222,11 @@ async function main() {
   await device.expect(["Roaster spotlight"], 180_000);
   console.info("Running (please don't touch the emulator)…");
 
+  // ONLY=search runs just the cases whose name contains "search".
+  const only = process.env.ONLY?.toLowerCase();
+  const chosen = only ? cases.filter(([name]) => name.toLowerCase().includes(only)) : cases;
   const failures: string[] = [];
-  for (const [name, run] of cases) {
+  for (const [name, run] of chosen) {
     device.clearLog();
     try {
       await run(device);
@@ -210,11 +235,13 @@ async function main() {
       console.info(`  ✓ ${name}`);
     } catch (err) {
       failures.push(name);
-      console.error(`  ✘ ${name}\n    ${String(err instanceof Error ? err.message : err).replace(/\n/g, "\n    ")}`);
+      const shot = join(repo, "e2e/test-results", `android-${failures.length}.png`);
+      device.screenshot(shot);
+      console.error(`  ✘ ${name}\n    ${String(err instanceof Error ? err.message : err).replace(/\n/g, "\n    ")}\n    Screenshot: ${shot}`);
     }
   }
 
-  console.info(`\n${cases.length - failures.length} passed, ${failures.length} failed`);
+  console.info(`\n${chosen.length - failures.length} passed, ${failures.length} failed`);
   if (failures.length > 0) process.exitCode = 1;
 }
 
