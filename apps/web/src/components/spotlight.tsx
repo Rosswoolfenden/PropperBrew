@@ -30,9 +30,10 @@ export function RoasterSpotlight({ roasters }: { roasters: Roaster[] }) {
         }}
       >
         {roasters.map((r) => {
-          const image = r.coffees.find((c) => c.imageUrl)?.imageUrl;
+          // Their chosen hero photo, else their newest coffee's.
+          const image = r.heroImageUrl ?? r.coffees.find((c) => c.imageUrl)?.imageUrl;
           return (
-            <a key={r.id} href={`#roaster-${r.slug}`} className="spotlight-card frame" aria-label={`${r.name}, see their coffees`}>
+            <a key={r.id} href={`/${r.slug}`} className="spotlight-card frame" aria-label={`${r.name}, visit their page`}>
               {image && <img src={image} alt="" />}
               <span className="spotlight-text">
                 <strong>{r.name}</strong>

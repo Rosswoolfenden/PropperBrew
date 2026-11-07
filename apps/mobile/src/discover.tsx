@@ -16,8 +16,9 @@ const SPOTLIGHT_GAP = 12;
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const coffeeCount = (n: number) => `${n} ${n === 1 ? "coffee" : "coffees"}`;
-/** A roaster's photo: their newest coffee that has one. */
-const roasterImage = (r: DiscoverRoaster) => r.coffees.find((c) => c.imageUrl)?.imageUrl ?? null;
+/** A roaster's photo: the hero they picked, else their newest coffee that has one. */
+const roasterImage = (r: DiscoverRoaster) => r.heroImageUrl ?? r.coffees.find((c) => c.imageUrl)?.imageUrl ?? null;
+const roasterHref = (slug: string) => ({ pathname: "/roaster/[slug]", params: { slug } }) as const;
 const beanHref = (roasterSlug: string, beanSlug: string) =>
   ({ pathname: "/bean/[roaster]/[bean]", params: { roaster: roasterSlug, bean: beanSlug } }) as const;
 
@@ -59,7 +60,7 @@ export function RoasterSpotlight({ roasters, onSelect }: { roasters: DiscoverRoa
         scrollEventThrottle={16}
         onScroll={(e) => setIndex(Math.min(roasters.length - 1, Math.max(0, Math.round(e.nativeEvent.contentOffset.x / interval))))}
         contentContainerStyle={{ paddingHorizontal: GUTTER, gap: SPOTLIGHT_GAP }}
-        renderItem={({ item }) => <SpotlightCard roaster={item} width={cardWidth} onPress={() => onSelect(item.id)} />}
+        renderItem={({ item }) => <SpotlightCard roaster={item} width={cardWidth} />}
       />
       {current && (
         <View style={{ paddingHorizontal: GUTTER, gap: 16 }}>
@@ -71,7 +72,7 @@ export function RoasterSpotlight({ roasters, onSelect }: { roasters: DiscoverRoa
   );
 }
 
-function SpotlightCard({ roaster, width, onPress }: { roaster: DiscoverRoaster; width: number; onPress: () => void }) {
+function SpotlightCard({ roaster, width }: { roaster: DiscoverRoaster; width: number }) {
   const styles = useStyles();
   const colors = useColors();
   const dark = useColorScheme() === "dark";
@@ -80,41 +81,44 @@ function SpotlightCard({ roaster, width, onPress }: { roaster: DiscoverRoaster; 
   const ink = dark ? colors.onSurface : "#ffffff";
 
   return (
-    <Pressable role="button" aria-label={`${roaster.name}, see their coffees`} onPress={onPress} style={{ width }}>
-      <Frame uri={roasterImage(roaster)} aspectRatio={4 / 5} />
-      <LinearGradient colors={["transparent", scrim]} locations={[0.35, 1]} style={[StyleSheet.absoluteFill, { borderRadius: radius.xl }]} />
-      <View style={styles.spotlightText}>
-        <Text style={[styles.spotlightName, { color: ink }]}>{roaster.name}</Text>
-        {roaster.city && <Text style={[styles.spotlightCity, { color: ink }]}>{roaster.city}</Text>}
-      </View>
-    </Pressable>
+    <Link href={roasterHref(roaster.slug)} asChild>
+      <Pressable role="link" aria-label={`${roaster.name}, visit their page`} style={{ width }}>
+        <Frame uri={roasterImage(roaster)} aspectRatio={4 / 5} />
+        <LinearGradient colors={["transparent", scrim]} locations={[0.35, 1]} style={[StyleSheet.absoluteFill, { borderRadius: radius.xl }]} />
+        <View style={styles.spotlightText}>
+          <Text style={[styles.spotlightName, { color: ink }]}>{roaster.name}</Text>
+          {roaster.city && <Text style={[styles.spotlightCity, { color: ink }]}>{roaster.city}</Text>}
+        </View>
+      </Pressable>
+    </Link>
   );
 }
 
 /** "The Collection": every roaster in an offset two-column grid. */
-export function RoasterCollection({ roasters, onSelect }: { roasters: DiscoverRoaster[]; onSelect: (roasterId: string) => void }) {
+export function RoasterCollection({ roasters }: { roasters: DiscoverRoaster[] }) {
   const styles = useStyles();
   return (
     <View style={{ paddingHorizontal: GUTTER, gap: 32 }}>
       <Headline size="section">The Collection</Headline>
       <View style={styles.grid}>
         {roasters.map((r, i) => (
-          <Pressable
-            key={r.id}
-            role="button"
-            aria-label={`${r.name}, see their coffees`}
-            onPress={() => onSelect(r.id)}
-            // Right-hand column sits lower, for the design's intentional asymmetry.
-            style={[styles.gridItem, i % 2 === 1 && { marginTop: 32 }]}
-          >
-            <Frame uri={roasterImage(r)} aspectRatio={3 / 4} style={{ marginBottom: 12 }} />
-            <Text style={styles.gridName}>{r.name}</Text>
-            {r.city && (
-              <Body italic muted style={{ fontSize: 14, lineHeight: 18 }}>
-                {r.city}
-              </Body>
-            )}
-          </Pressable>
+          <Link key={r.id} href={roasterHref(r.slug)} asChild>
+            <Pressable
+              role="link"
+              aria-label={`${r.name}, visit their page`}
+              // Right-hand column sits lower, for the design's intentional asymmetry.
+              // (Flattened: a Link's child can't take an array of styles.)
+              style={StyleSheet.flatten([styles.gridItem, i % 2 === 1 && { marginTop: 32 }])}
+            >
+              <Frame uri={roasterImage(r)} aspectRatio={3 / 4} style={{ marginBottom: 12 }} />
+              <Text style={styles.gridName}>{r.name}</Text>
+              {r.city && (
+                <Body italic muted style={{ fontSize: 14, lineHeight: 18 }}>
+                  {r.city}
+                </Body>
+              )}
+            </Pressable>
+          </Link>
         ))}
       </View>
     </View>

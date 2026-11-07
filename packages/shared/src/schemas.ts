@@ -120,3 +120,32 @@ export const ScannedBag = z.object({
   roastDate: z.string().nullable().describe("ISO date YYYY-MM-DD if a roast date is printed on the bag"),
 });
 export type ScannedBag = z.infer<typeof ScannedBag>;
+
+/** Blank → null, so clearing a field removes it rather than saving "". */
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .transform((s) => s || null)
+    .nullable();
+
+/** A roaster's public profile, edited in the business dashboard. */
+export const RoasterProfileInput = z.object({
+  roasterId: z.uuid(),
+  tagline: optionalText(280),
+  bio: optionalText(2000),
+  city: optionalText(80),
+  establishedYear: z.number().int().min(1800).max(new Date().getFullYear()).nullable(),
+  address: optionalText(200),
+  websiteUrl: z
+    .string()
+    .trim()
+    .max(300)
+    .transform((s) => s || null)
+    .pipe(z.url({ protocol: /^https?$/ }).nullable())
+    .nullable(),
+  /** Must be one of the roaster's own coffee photos (checked by the API). */
+  heroImageUrl: z.url().nullable(),
+});
+export type RoasterProfileInput = z.input<typeof RoasterProfileInput>;

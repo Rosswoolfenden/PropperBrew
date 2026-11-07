@@ -42,7 +42,7 @@ export default function DiscoverScreen() {
       ) : (
         <>
           <RoasterSpotlight roasters={roasters.data.slice(0, SPOTLIGHT_COUNT)} onSelect={jumpTo} />
-          <RoasterCollection roasters={roasters.data} onSelect={jumpTo} />
+          <RoasterCollection roasters={roasters.data} />
           <NewArrivals roasters={roasters.data} />
           {roasters.data.map((roaster) => (
             <View key={roaster.id} onLayout={(e) => rowOffsets.current.set(roaster.id, e.nativeEvent.layout.y)}>

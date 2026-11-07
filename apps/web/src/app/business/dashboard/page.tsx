@@ -6,6 +6,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { formatGbp } from "@propperbrew/shared";
 import { useSession, useTRPC } from "@/app/providers";
+import { Feedback } from "@/components/business/feedback";
+import { ProfileForm } from "@/components/business/profile-form";
+import { Recommendations } from "@/components/business/recommendations";
 import { Rating } from "@/components/rating";
 import type { RouterOutputs } from "@/lib/trpc";
 
@@ -118,6 +121,12 @@ function RoasterPanel({ roaster: r, showName }: { roaster: Roaster; showName: bo
           ))}
         </ul>
       )}
+
+      <div className="tools">
+        <ProfileForm roaster={r} />
+        <Recommendations roaster={r} />
+        <Feedback roaster={r} />
+      </div>
     </section>
   );
 }

@@ -58,6 +58,7 @@ export default function RootLayout() {
         />
         <Stack.Screen name="bean/[roaster]/[bean]" options={{ title: BRAND }} />
         <Stack.Screen name="recipe/[id]" options={{ title: BRAND }} />
+        <Stack.Screen name="roaster/[slug]" options={{ title: BRAND }} />
         <Stack.Screen
           name="review/[roaster]/[bean]"
           options={{

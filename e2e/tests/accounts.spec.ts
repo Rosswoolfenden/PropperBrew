@@ -137,7 +137,7 @@ test.describe("roasters", () => {
       new RegExp(`${seed.inStock.name}.*In stock.*£12\\.50`),
       new RegExp(`${seed.soldOut.name}.*Sold out.*—`),
     ]);
-    await panel.getByRole("link", { name: seed.inStock.name }).click();
+    await panel.locator(".coffee-line").getByRole("link", { name: seed.inStock.name }).click();
     await expect(page).toHaveURL(`/${seed.roaster.slug}/${seed.inStock.slug}`);
   });
 

@@ -10,7 +10,7 @@ const newsreader = Newsreader({ subsets: ["latin"], style: ["normal", "italic"],
 
 // Only the glyphs the pages use; names must stay alphabetical for Google Fonts.
 const ICONS_URL =
-  "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0..1,0&icon_names=grain,scale,thermostat&display=block";
+  "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0..1,0&icon_names=grain,location_on,scale,thermostat&display=block";
 
 export const metadata: Metadata = {
   title: { default: "PropperBrew — UK specialty coffee, rated & dialled in", template: "%s · PropperBrew" },

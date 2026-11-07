@@ -126,14 +126,34 @@ test.describe("discover", () => {
   test("spotlight counts through roasters and jumps to their coffees", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByText("01 / 02")).toBeVisible();
-    // First match is the spotlight card; the collection grid has the same button further down.
-    const northStar = page.getByRole("button", { name: `${seed.roaster.name}, see their coffees` }).first();
-    await northStar.scrollIntoViewIfNeeded();
+    const card = page.getByRole("link", { name: `${seed.roaster.name}, visit their page` }).first();
+    await card.scrollIntoViewIfNeeded();
     await expect(page.getByText("02 / 02")).toBeVisible();
     await expect(page.getByText(/first specialty roastery/)).toBeVisible();
 
-    await northStar.click();
+    await page.getByRole("button", { name: "See their coffees" }).click();
     await expect(page.getByRole("region", { name: `${seed.roaster.name} coffees` }).getByText(seed.inStock.name)).toBeInViewport();
+  });
+
+  test("roasters open their page (Roaster Profile)", async ({ page }) => {
+    await page.goto("/");
+    // The collection grid's card (the spotlight has one too).
+    await page.getByRole("link", { name: `${seed.roaster.name}, visit their page` }).last().click();
+    await expect(page).toHaveURL(`/roaster/${seed.roaster.slug}`);
+    await expect(screenHeading(page, seed.roaster.name)).toBeVisible();
+    await expect(page.getByText("Established 2016").filter({ visible: true })).toBeVisible();
+    await expect(page.getByText("“Roasted light, so you taste the farm, not the furnace.”").filter({ visible: true })).toBeVisible();
+    await expect(screenHeading(page, "Current Roasts")).toBeVisible();
+    // Earlier screens stay mounted (hidden) in the stack, so look at what's on screen.
+    const elDiviso = page.getByText(seed.inStock.name).filter({ visible: true });
+    await expect(elDiviso).toBeVisible();
+    await expect(page.getByText("from £12.50").filter({ visible: true })).toBeVisible();
+    await expect(page.getByText("Sold out", { exact: true }).filter({ visible: true })).toBeVisible();
+    await expect(page.getByText("12 Call Lane, Leeds LS1 6DT").filter({ visible: true })).toBeVisible();
+    await expect(page.getByText("north-star.coffee →").filter({ visible: true })).toBeVisible();
+
+    await elDiviso.click();
+    await expect(page).toHaveURL(beanPath);
   });
 
   test("opens the bean screen from a coffee card", async ({ page }) => {

@@ -70,8 +70,9 @@ test.describe("discover", () => {
     await expect(arrivals.nth(1)).toContainText(seed.inStock.name);
     await expect(arrivals.nth(2)).toContainText("Cerrado Pulped Natural");
 
+    // Each roaster opens their page.
     await collection.getByRole("link", { name: new RegExp(seed.roaster.name) }).click();
-    await expect(page).toHaveURL(`/#roaster-${seed.roaster.slug}`);
+    await expect(page).toHaveURL(`/${seed.roaster.slug}`);
   });
 
   test("spotlight counts through roasters and jumps to their coffees", async ({ page }) => {
@@ -89,7 +90,8 @@ test.describe("discover", () => {
     await expect(about).toContainText("first specialty roastery");
     await expect(about.getByRole("link", { name: "See their coffees" })).toHaveAttribute("href", `#roaster-${seed.roaster.slug}`);
 
-    await spotlight.getByRole("link", { name: new RegExp(seed.roaster.name) }).click();
+    await expect(spotlight.getByRole("link", { name: `${seed.roaster.name}, visit their page` })).toHaveAttribute("href", `/${seed.roaster.slug}`);
+    await about.getByRole("link", { name: "See their coffees" }).click();
     await expect(page).toHaveURL(`/#roaster-${seed.roaster.slug}`);
     await expect(page.getByRole("heading", { level: 2, name: seed.roaster.name })).toBeInViewport();
   });

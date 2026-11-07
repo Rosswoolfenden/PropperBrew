@@ -34,6 +34,14 @@ insert into public.roasters (id, slug, name, city, bio, shopify_domain, shopify_
   ('00000000-0000-4000-8000-000000000120', 'gone-quiet', 'Gone Quiet Roasters', 'Bristol', null,
    'gone-quiet.myshopify.com', now() - interval '90 days', now());
 
+-- North Star has filled in its profile; Hackney Heights hasn't yet.
+update public.roasters set
+  tagline = 'Roasted light, so you taste the farm, not the furnace.',
+  established_year = 2016,
+  address = '12 Call Lane, Leeds LS1 6DT',
+  website_url = 'https://north-star.coffee'
+where id = '00000000-0000-4000-8000-000000000100';
+
 -- The demo business account runs North Star.
 insert into public.roaster_members (roaster_id, user_id, role) values
   ('00000000-0000-4000-8000-000000000100', '00000000-0000-4000-8000-00000000000c', 'owner');
@@ -60,6 +68,9 @@ values
   ('00000000-0000-4000-8000-000000000221', '00000000-0000-4000-8000-000000000120', 'old-faithful',
    'Old Faithful', null, 'Guatemala', null, null, 'washed', 'medium',
    '{}', null, '{Toffee}', null, 0, now());
+
+update public.roasters set hero_image_url = :'image_base' || '/mock/el-diviso.jpg'
+where id = '00000000-0000-4000-8000-000000000100';
 
 insert into public.shopify_products (id, roaster_id, shopify_product_id, coffee_bean_id, title) values
   ('00000000-0000-4000-8000-000000000301', '00000000-0000-4000-8000-000000000100', '1001',

@@ -56,6 +56,16 @@ const cases: [name: string, run: (d: Device) => Promise<void>][] = [
     },
   ],
   [
+    "roaster page: story, current roasts and the roastery",
+    async (d) => {
+      await d.launch(`/roaster/${seed.roaster.slug}`);
+      await d.expect(["Established 2016", seed.roaster.name, "Our Philosophy"]);
+      await d.scrollTo("Current Roasts");
+      await d.scrollTo("Visit the Roastery");
+      await d.expect(["12 Call Lane, Leeds LS1 6DT"]);
+    },
+  ],
+  [
     "discover: a new arrival opens its coffee",
     async (d) => {
       await d.launch("/");

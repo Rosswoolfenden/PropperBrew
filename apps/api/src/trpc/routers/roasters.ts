@@ -1,4 +1,5 @@
-import { and, desc, eq, isNotNull, lte, sql } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
+import { and, asc, desc, eq, isNotNull, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { coffeeBeans, roasters, shopifyVariants } from "@propperbrew/db";
 import { ratingFromDb } from "@propperbrew/shared";
@@ -70,7 +71,15 @@ export const roastersRouter = router({
             addedAt: ranked.createdAt,
           },
           coffeeCount: ranked.coffeeCount,
-          roaster: { id: roasters.id, slug: roasters.slug, name: roasters.name, city: roasters.city, bio: roasters.bio },
+          roaster: {
+            id: roasters.id,
+            slug: roasters.slug,
+            name: roasters.name,
+            city: roasters.city,
+            bio: roasters.bio,
+            tagline: roasters.tagline,
+            heroImageUrl: roasters.heroImageUrl,
+          },
         })
         .from(ranked)
         .innerJoin(roasters, eq(roasters.id, ranked.roasterId))
@@ -86,4 +95,42 @@ export const roastersRouter = router({
       }
       return [...byRoaster.values()].slice(0, input.limit);
     }),
+
+  /** A roaster's public page: their profile and the coffees they're selling now. */
+  bySlug: publicProcedure.input(z.object({ slug: z.string().min(1).max(80) })).query(async ({ ctx, input }) => {
+    const roaster = await ctx.db.query.roasters.findFirst({
+      where: and(eq(roasters.slug, input.slug), eq(roasters.isActive, true)),
+      columns: {
+        id: true,
+        slug: true,
+        name: true,
+        city: true,
+        bio: true,
+        tagline: true,
+        establishedYear: true,
+        address: true,
+        websiteUrl: true,
+        heroImageUrl: true,
+      },
+    });
+    if (!roaster) throw new TRPCError({ code: "NOT_FOUND" });
+    const beans = await ctx.db.query.coffeeBeans.findMany({
+      where: and(eq(coffeeBeans.roasterId, roaster.id), eq(coffeeBeans.isArchived, false)),
+      columns: { id: true, slug: true, name: true, imageUrl: true, roastLevel: true, tastingNotes: true, avgRating: true, reviewCount: true },
+      with: { variants: { columns: { pricePence: true, inStock: true } } },
+      orderBy: asc(coffeeBeans.name),
+    });
+    const coffees = beans.map(({ variants, avgRating, ...b }) => {
+      const prices = variants.filter((v) => v.inStock).map((v) => v.pricePence);
+      return {
+        ...b,
+        avgRating: avgRating === null ? null : ratingFromDb(avgRating),
+        fromPricePence: prices.length ? Math.min(...prices) : null,
+        priceCount: new Set(prices).size,
+      };
+    });
+    // In stock first.
+    coffees.sort((a, b) => Number(b.fromPricePence !== null) - Number(a.fromPricePence !== null));
+    return { ...roaster, coffees };
+  }),
 });

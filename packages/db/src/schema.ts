@@ -66,6 +66,13 @@ export const roasters = pgTable(
     name: text("name").notNull(),
     city: text("city"),
     bio: text("bio"),
+    /** The roaster's philosophy, shown as a pull quote on their page. */
+    tagline: text("tagline"),
+    establishedYear: smallint("established_year"),
+    /** Where to visit the roastery, if they welcome visitors. */
+    address: text("address"),
+    /** Their page's hero photo: one of their own coffee photos, picked in the dashboard. */
+    heroImageUrl: text("hero_image_url"),
     logoUrl: text("logo_url"),
     websiteUrl: text("website_url"),
     /** e.g. "test-uk-roaster.myshopify.com" */

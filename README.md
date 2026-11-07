@@ -58,6 +58,8 @@ Schema changes: edit `packages/db/src/schema.ts`, run `pnpm db:generate`, then `
 - *Connect your store* (website dashboard): `business.connectShopifyUrl` returns the install URL carrying a signed, 10-minute connect token (`apps/api/src/business/connect-token.ts`). After Shopify's approval, the OAuth callback links the store to that account, as owner if the roaster has none yet, otherwise as staff.
 - *Continue with Shopify* (website `/business`): an OAuth round trip with an online (per-user) token, so Shopify tells us which staff member approved it. If the store has the app installed and Shopify has verified their email, the API finds or creates their account through the auth admin API, adds them to the roaster, and sends them on with a one-time sign-in link.
 
+**Roaster tools.** In the business dashboard, a roaster's team can edit the roaster's public page: philosophy, story, city, year established, address, website, and a hero photo picked from their own coffee photos (the API refuses any other image). They can post recipes as their own recommendations ("Roaster's pick", shown first on that coffee's brewing guide) and remove them, and see recent reviews and community recipes on their coffees. Only members of a roaster can change it. The public page is `/<roaster>` on the website and the roaster screen in the app, following the Stitch Roaster Profile design. Discover links to it, and pages are rebuilt as soon as anything changes.
+
 **Security.** Shopify tokens are encrypted with AES-256-GCM. All data access goes through the API, which connects as `postgres`. RLS is enabled with no policies, so Supabase's auto-generated REST API exposes nothing. Clients authenticate with Supabase JWTs, which the API verifies via JWKS, or with the HS256 secret if one is set.
 
 ## Design
@@ -117,6 +119,6 @@ ANDROID_HOME=~/Library/Android/sdk pnpm test:android
 ## Not built yet
 
 - **In-app checkout.** Today "Order" opens the roaster's own Shopify checkout with the chosen size and quantity already in the cart (a cart permalink, `packages/shared/src/shopify.ts`), so PropperBrew takes no commission yet. The schema (`orders`, `order_lines`, `roasters.stripe_account_id`, `commission_bps`) is ready for Option 2: Stripe Connect plus Shopify `orderCreate`. The API routes, Stripe webhook and basket UI still need writing.
-- The review and recipe forms on the website (the app has the recipe form). The business dashboard shows connection status and coffees; managing them (recommended recipes, roaster profile) comes next.
+- A community recipe form on the website (the app has one).
+- Photo uploads (review photos, roaster logos). Hero photos come from the roaster's synced coffee photos for now.
 - Recommendations: `pgvector` is enabled, but nothing uses embeddings yet.
-- Roaster-editable profile (city, roast days, shipping) on the `/shopify/app` page.

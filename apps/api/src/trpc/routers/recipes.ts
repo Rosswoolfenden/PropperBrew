@@ -8,6 +8,22 @@ import { protectedProcedure, publicProcedure, router, type Context } from "../in
 
 const grinderKey = (model?: string) => model?.trim().toLowerCase().replace(/\s+/g, " ") || null;
 
+/** The stored columns for a recipe, by a user or (as their recommendation) a roaster. */
+export const recipeColumns = (input: CreateBrewRecipeInput, author: { userId: string } | { roasterId: string }) => ({
+  ...author,
+  coffeeBeanId: input.coffeeBeanId,
+  brewMethod: input.brewMethod,
+  coffeeDoseDg: Math.round(input.coffeeDoseG * 10),
+  waterWeightG: Math.round(input.waterWeightG),
+  waterTempC: input.waterTempC,
+  grinderModel: input.grinderModel,
+  grinderKey: grinderKey(input.grinderModel),
+  grindSetting: input.grindSetting,
+  totalBrewTimeSeconds: input.totalBrewTimeSeconds,
+  steps: input.steps,
+  notes: input.notes,
+});
+
 const roasterAuthors = alias(roasters, "roaster_authors");
 
 /** Recipe rows with their author (a user or the roaster) and whether `viewerId` has upvoted them. */
@@ -72,20 +88,7 @@ export const recipesRouter = router({
   create: protectedProcedure.input(CreateBrewRecipeInput).mutation(async ({ ctx, input }) => {
     const [recipe] = await ctx.db
       .insert(brewRecipes)
-      .values({
-        userId: ctx.user.id,
-        coffeeBeanId: input.coffeeBeanId,
-        brewMethod: input.brewMethod,
-        coffeeDoseDg: Math.round(input.coffeeDoseG * 10),
-        waterWeightG: Math.round(input.waterWeightG),
-        waterTempC: input.waterTempC,
-        grinderModel: input.grinderModel,
-        grinderKey: grinderKey(input.grinderModel),
-        grindSetting: input.grindSetting,
-        totalBrewTimeSeconds: input.totalBrewTimeSeconds,
-        steps: input.steps,
-        notes: input.notes,
-      })
+      .values(recipeColumns(input, { userId: ctx.user.id }))
       .returning({ id: brewRecipes.id });
     return recipe!;
   }),

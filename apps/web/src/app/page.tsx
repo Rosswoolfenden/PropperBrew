@@ -12,7 +12,7 @@ const SPOTLIGHT_COUNT = 4;
 const NEW_ARRIVALS_COUNT = 4;
 
 const coffeeCount = (n: number) => `${n} ${n === 1 ? "coffee" : "coffees"}`;
-const roasterImage = (r: Roaster) => r.coffees.find((c) => c.imageUrl)?.imageUrl;
+const roasterImage = (r: Roaster) => r.heroImageUrl ?? r.coffees.find((c) => c.imageUrl)?.imageUrl;
 
 export default async function DiscoverPage() {
   const roasters = await api.roasters.discover.query({});
@@ -38,11 +38,11 @@ export default async function DiscoverPage() {
                 const image = roasterImage(r);
                 return (
                   <li key={r.id}>
-                    <a href={`#roaster-${r.slug}`} className="collection-item" aria-label={`${r.name}, see their coffees`}>
+                    <Link href={`/${r.slug}`} className="collection-item" aria-label={`${r.name}, visit their page`}>
                       <div className="frame">{image && <img src={image} alt="" loading="lazy" />}</div>
                       <strong>{r.name}</strong>
                       {r.city && <span className="subtitle">{r.city}</span>}
-                    </a>
+                    </Link>
                   </li>
                 );
               })}
