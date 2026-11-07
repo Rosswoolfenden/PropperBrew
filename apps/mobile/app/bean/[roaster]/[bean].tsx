@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { formatAltitude, formatPriceFrom, humanize, possessive, radius, type BrewMethod } from "@propperbrew/shared";
 import { ORDER_BAR_HEIGHT, OrderBar, SizeOptions } from "@/order";
 import { RecipeCard } from "@/recipe-card";
@@ -177,7 +177,11 @@ export default function BeanScreen() {
           {reviews.data?.map((r) => (
             <View key={r.id} style={styles.review}>
               <View style={styles.reviewHead}>
-                <Eyebrow style={styles.reviewAuthor}>{r.user.username}</Eyebrow>
+                <Link href={{ pathname: "/user/[username]", params: { username: r.user.username } }} asChild>
+                  <Pressable role="link" aria-label={`${r.user.username}'s profile`}>
+                    <Eyebrow style={styles.reviewAuthor}>{r.user.username}</Eyebrow>
+                  </Pressable>
+                </Link>
                 <Stars value={r.rating} />
               </View>
               {r.tastingNotes.length > 0 && (

@@ -184,6 +184,32 @@ const cases: [name: string, run: (d: Device) => Promise<void>][] = [
     },
   ],
   [
+    "profile: someone's stats, reviews and recipes",
+    async (d) => {
+      await d.launch("/user/alice");
+      await d.expect(["Alice", "@alice", "Chasing bright, floral coffees.", "4 Recipes", "2 Roasters", "1 Review"]);
+      await d.scrollTo("Acidity 5 of 5, Bright & citric");
+      await d.scrollTo("Recipes");
+    },
+  ],
+  [
+    "profile: opens from a review on the coffee page",
+    async (d) => {
+      await d.launch(bean);
+      await d.scrollTo("ben's profile", aboveOrderBar);
+      await d.tap("ben's profile");
+      await d.expect(["@ben", "3 Recipes"]);
+    },
+  ],
+  [
+    "profile: signed out, your profile offers sign in",
+    async (d) => {
+      // Not through the top bar: Expo Go's floating dev-tools button sits over its right-hand icons.
+      await d.launch("/profile");
+      await d.expect(["Sign in to see your profile"]);
+    },
+  ],
+  [
     "scan screen opens",
     async (d) => {
       await d.launch("/scan");

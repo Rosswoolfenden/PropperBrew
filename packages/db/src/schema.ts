@@ -48,6 +48,8 @@ export const profiles = pgTable("profiles", {
   id: uuid("id").primaryKey(),
   username: text("username").notNull().unique(),
   displayName: text("display_name"),
+  /** A line about them and their coffee, shown under their name on their profile. */
+  bio: text("bio"),
   avatarUrl: text("avatar_url"),
   /** Default gear, used to pre-filter recipes ("show me Comandante recipes"). */
   defaultGrinder: text("default_grinder"),

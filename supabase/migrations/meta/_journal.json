@@ -43,6 +43,13 @@
       "when": 1794089348923,
       "tag": "20261107220908_roaster_profile",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794094038323,
+      "tag": "20261107232718_user_profile",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocalSearchParams } from "expo-router";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { BREW_METHOD_LABELS, formatDuration, radius } from "@propperbrew/shared";
 import { activeStepIndex, BrewTimerCard, useBrewTimer } from "@/brew-timer";
 import { fonts, themed } from "@/theme";
@@ -37,7 +37,15 @@ export default function RecipeScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <View style={{ gap: 16 }}>
         <View style={styles.byline}>
-          <Eyebrow>{r.author.type === "roaster" ? "Roaster's pick" : `Recipe by ${r.author.username}`}</Eyebrow>
+          {r.author.type === "roaster" ? (
+            <Eyebrow>Roaster&apos;s pick</Eyebrow>
+          ) : (
+            <Link href={{ pathname: "/user/[username]", params: { username: r.author.username } }} asChild>
+              <Pressable role="link">
+                <Eyebrow>Recipe by {r.author.username}</Eyebrow>
+              </Pressable>
+            </Link>
+          )}
           <View style={styles.rule} />
           <Link href={{ pathname: "/bean/[roaster]/[bean]", params: { roaster: r.bean.roaster.slug, bean: r.bean.slug } }}>
             <Text style={styles.beanLink}>{r.bean.name}</Text>

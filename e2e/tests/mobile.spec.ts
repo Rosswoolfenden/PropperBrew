@@ -3,7 +3,7 @@
  * data flow; native-only behaviour (camera capture, push) is out of reach here.
  */
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
-import { accessToken, accounts, apiUrl, clearReviews, rgb, seed } from "../fixtures";
+import { accessToken, accounts, apiUrl, clearReviews, rgb, seed, sql } from "../fixtures";
 
 const beanPath = `/bean/${seed.roaster.slug}/${seed.inStock.slug}`;
 /** The in-screen headline; the native-stack header renders the same title as a level-1 heading. */
@@ -490,6 +490,9 @@ test.describe("upvotes", () => {
 });
 
 test.describe("add your recipe", () => {
+  // Remove what the tests posted, so recipe counts elsewhere stay as seeded.
+  test.afterAll(() => sql(`delete from brew_recipes where user_id = '${seed.alice.id}' and id::text not like '00000000-0000-4000-8000-%'`));
+
   const newPath = `/recipe/new?beanId=${seed.inStock.id}&beanName=${encodeURIComponent(seed.inStock.name)}`;
 
   test("asks signed-out people to sign in", async ({ page }) => {
@@ -622,6 +625,75 @@ test.describe("reviews", () => {
     await expect(page.getByRole("checkbox", { name: "Rhubarb" })).toHaveAttribute("aria-checked", "true");
     await expect(page.getByLabel("Your notes")).toHaveValue("Bright and juicy, with a long floral finish.");
     await expect(page.getByRole("button", { name: "Update review" })).toBeVisible();
+  });
+});
+
+test.describe("profile", () => {
+  const visible = (page: Page) => page.locator("body");
+  test.afterAll(() =>
+    sql(`update profiles set display_name = 'Alice', bio = 'Chasing bright, floral coffees.',
+           default_grinder = 'Comandante C40', default_brew_method = 'v60' where username = 'alice'`),
+  );
+
+  test("signed out, the top bar's profile asks you to sign in", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Profile" }).click();
+    await expect(page).toHaveURL("/profile");
+    await expect(page.getByRole("button", { name: "Sign in to see your profile" })).toBeVisible();
+  });
+
+  test("shows your stats, reviews and recipes, and edits", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/profile");
+    await expect(screenHeading(page, "Alice")).toBeVisible();
+    await expect(page.getByText("@alice")).toBeVisible();
+    await expect(page.getByText("Chasing bright, floral coffees.")).toBeVisible();
+    for (const stat of ["4 Recipes", "2 Roasters", "1 Review"]) await expect(page.getByLabel(stat, { exact: true })).toBeVisible();
+
+    const reviews = page.getByRole("region", { name: "Your Reviews" });
+    await expect(reviews.getByRole("link", { name: seed.inStock.name })).toBeVisible();
+    await expect(reviews.getByLabel("Acidity 5 of 5, Bright & citric")).toBeVisible();
+    await expect(reviews.getByText("“Bright and juicy, with a long floral finish.”")).toBeVisible();
+    const recipes = page.getByRole("region", { name: "Your Recipes" });
+    await expect(recipes.getByRole("link")).toHaveCount(4);
+
+    await page.getByRole("button", { name: "Edit profile" }).click();
+    const form = page.getByRole("form", { name: "Edit profile" });
+    await expect(form.getByLabel("Name")).toHaveValue("Alice");
+    await expect(form.getByRole("button", { name: "V60 Pour-Over", exact: true })).toHaveAttribute("aria-selected", "true");
+    await form.getByLabel("About you").fill("x".repeat(161));
+    await form.getByRole("button", { name: "Save profile" }).click();
+    await expect(form.getByText("Keep this under 160 characters")).toBeVisible();
+
+    await form.getByLabel("Name").fill("Alice B");
+    await form.getByLabel("About you").fill("Mostly filter.");
+    await form.getByRole("button", { name: "Chemex", exact: true }).click();
+    await form.getByRole("button", { name: "Save profile" }).click();
+    await expect(form).toHaveCount(0);
+    await expect(screenHeading(page, "Alice B")).toBeVisible();
+    await expect(page.getByText("Mostly filter.")).toBeVisible();
+    await expect(page.getByText(/^Brews with Chemex · Comandante C40 · Member since/)).toBeVisible();
+    await expect(visible(page)).not.toContainText("Chasing bright");
+  });
+
+  test("other people's profiles open from reviews and recipes", async ({ page }) => {
+    await page.goto(beanPath);
+    const reviews = page.getByRole("region", { name: "Reviews" });
+    await reviews.getByRole("link", { name: "ben's profile" }).click();
+    await expect(page).toHaveURL("/user/ben");
+    await expect(screenHeading(page, "ben").filter({ visible: true })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Reviews" }).filter({ visible: true }).getByLabel("Acidity 4 of 5, Bright")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Edit profile" })).toHaveCount(0);
+
+    await page.goto(`/recipe/${seed.inStock.v60RecipeId}`);
+    await page.getByRole("link", { name: "Recipe by alice" }).click();
+    await expect(page).toHaveURL("/user/alice");
+    await expect(page.getByRole("region", { name: "Reviews" }).filter({ visible: true })).toBeVisible();
+  });
+
+  test("says when there's no one by that name", async ({ page }) => {
+    await page.goto("/user/nobody-here");
+    await expect(page.getByText("There's no one here by that name.")).toBeVisible();
   });
 });
 

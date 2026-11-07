@@ -140,6 +140,15 @@ const optionalText = (max: number) =>
     .transform((s) => s || null)
     .nullable();
 
+/** Your own profile: how you appear next to your reviews and recipes. */
+export const UserProfileInput = z.object({
+  displayName: optionalText(60),
+  bio: optionalText(160),
+  defaultGrinder: optionalText(80),
+  defaultBrewMethod: BrewMethod.nullable(),
+});
+export type UserProfileInput = z.input<typeof UserProfileInput>;
+
 /** A roaster's public profile, edited in the business dashboard. */
 export const RoasterProfileInput = z.object({
   roasterId: z.uuid(),

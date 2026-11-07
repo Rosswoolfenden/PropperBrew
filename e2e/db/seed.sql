@@ -20,7 +20,8 @@ insert into auth.identities (provider_id, user_id, identity_data, provider, last
 select id, id, jsonb_build_object('sub', id::text, 'email', email, 'email_verified', true), 'email', now(), now(), now()
 from auth.users;
 
-update public.profiles set username = 'alice' where id = '00000000-0000-4000-8000-00000000000a';
+update public.profiles set username = 'alice', display_name = 'Alice', bio = 'Chasing bright, floral coffees.',
+  default_grinder = 'Comandante C40', default_brew_method = 'v60' where id = '00000000-0000-4000-8000-00000000000a';
 update public.profiles set username = 'ben' where id = '00000000-0000-4000-8000-00000000000b';
 update public.profiles set username = 'north_star' where id = '00000000-0000-4000-8000-00000000000c';
 

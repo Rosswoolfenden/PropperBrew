@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TRPCClientError } from "@trpc/client";
 import {
@@ -143,7 +144,14 @@ export default async function BeanPage({ params }: { params: Params }) {
                       <div className="card-title">
                         {r.author.type === "roaster" && <span className="chip chip-sm">Roaster&apos;s pick</span>}
                         <h3>{BREW_METHOD_LABELS[r.brewMethod]}</h3>
-                        <span className="eyebrow">By {r.author.type === "roaster" ? r.author.name : r.author.username}</span>
+                        <span className="eyebrow">
+                          By{" "}
+                          {r.author.type === "roaster" ? (
+                            <Link href={`/${r.author.slug}`}>{r.author.name}</Link>
+                          ) : (
+                            <Link href={`/u/${r.author.username}`}>{r.author.username}</Link>
+                          )}
+                        </span>
                       </div>
                       <span className="upvotes" aria-label={`${r.upvotesCount} upvotes`}>
                         ↑ {r.upvotesCount}
@@ -198,7 +206,9 @@ export default async function BeanPage({ params }: { params: Params }) {
           {reviews.map((r) => (
             <div key={r.id} className="review">
               <div className="review-head">
-                <span className="review-author">{r.user.username}</span>
+                <Link href={`/u/${r.user.username}`} className="review-author">
+                  {r.user.username}
+                </Link>
                 <Stars value={r.rating} />
               </div>
               {r.tastingNotes.length > 0 && (

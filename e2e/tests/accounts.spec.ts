@@ -51,11 +51,12 @@ test.describe("coffee drinkers", () => {
   test("sign in, stay signed in, and sign out", async ({ page }) => {
     await signIn(page, accounts.alice.email, accounts.alice.password);
     await expect(page).toHaveURL("/");
-    await expect(banner(page).getByText(accounts.alice.username, { exact: true })).toBeVisible();
+    // Their name, linking to their profile.
+    await expect(banner(page).getByRole("link", { name: "Alice", exact: true })).toHaveAttribute("href", `/u/${accounts.alice.username}`);
     await expect(banner(page).getByRole("link", { name: "Dashboard" })).toHaveCount(0);
 
     await page.reload();
-    await expect(banner(page).getByText(accounts.alice.username, { exact: true })).toBeVisible();
+    await expect(banner(page).getByRole("link", { name: "Alice", exact: true })).toBeVisible();
 
     await banner(page).getByRole("button", { name: "Sign out" }).click();
     await expect(banner(page).getByRole("link", { name: "Sign in" })).toBeVisible();
@@ -72,8 +73,9 @@ test.describe("coffee drinkers", () => {
   test("create an account", async ({ page }) => {
     const email = await createAccount(page, "/sign-in");
     await expect(page).toHaveURL("/");
-    // Usernames come from the email (see handle_new_user).
-    await expect(banner(page).getByText(new RegExp(`^${email.split("@")[0]!.replace(/-/g, "")}_`))).toBeVisible();
+    // Name and username both come from the email (see handle_new_user); the name links to their profile.
+    const local = email.split("@")[0]!;
+    await expect(banner(page).getByRole("link", { name: local, exact: true })).toHaveAttribute("href", new RegExp(`^/u/${local.replace(/-/g, "")}_`));
     await expect(banner(page).getByRole("link", { name: "Dashboard" })).toHaveCount(0);
   });
 
@@ -176,7 +178,7 @@ test.describe("roasters", () => {
     // North Star already has an owner, so this person joins as staff.
     const panel = page.getByRole("region", { name: `${seed.roaster.name} dashboard` });
     await expect(panel.getByText("Staff", { exact: true })).toBeVisible();
-    await expect(banner(page).getByText(/^owner_/)).toBeVisible();
+    await expect(banner(page).locator('a[href^="/u/owner_"]')).toBeVisible();
 
     // Signed in for real: still there after a reload.
     await page.reload();

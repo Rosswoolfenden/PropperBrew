@@ -13,7 +13,7 @@ export default defineConfig({
   reporter: [["list"]],
   use: { trace: "retain-on-failure" },
   projects: [
-    { name: "web", testMatch: /(web|accounts|reviews|roasters|search)\.spec\.ts/, use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${ports.web}` } },
+    { name: "web", testMatch: /(web|accounts|reviews|roasters|search|profiles)\.spec\.ts/, use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${ports.web}` } },
     { name: "mobile", testMatch: "mobile.spec.ts", use: { ...phone, baseURL: `http://localhost:${ports.mobile}` } },
   ],
   webServer: [

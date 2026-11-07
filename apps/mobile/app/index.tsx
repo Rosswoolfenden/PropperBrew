@@ -29,7 +29,12 @@ export default function DiscoverScreen() {
       <Stack.Screen
         options={{
           headerLeft: () => <HeaderIcon icon="photo-camera" label="Scan a bag" onPress={() => router.push("/scan")} />,
-          headerRight: () => <HeaderIcon icon="inventory-2" label="My shelf" onPress={() => router.push("/shelf")} />,
+          headerRight: () => (
+            <View style={styles.headerIcons}>
+              <HeaderIcon icon="inventory-2" label="My shelf" onPress={() => router.push("/shelf")} />
+              <HeaderIcon icon="person" label="Profile" onPress={() => router.push("/profile")} />
+            </View>
+          ),
         }}
       />
       <Pressable
@@ -72,6 +77,7 @@ const useStyles = themed((c) =>
   StyleSheet.create({
     container: { paddingTop: 16, paddingBottom: 64, gap: 72 },
     message: { paddingHorizontal: GUTTER, gap: 16 },
+    headerIcons: { flexDirection: "row", gap: 8 },
     // Sits closer to the spotlight than the sections sit to each other.
     search: {
       flexDirection: "row",

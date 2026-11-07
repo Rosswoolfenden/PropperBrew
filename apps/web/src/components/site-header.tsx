@@ -40,9 +40,13 @@ export function SiteHeader() {
                   Dashboard
                 </Link>
               )}
-              <span className="nav-user" title={session.user.email}>
-                {me.data?.username ?? session.user.email}
-              </span>
+              {me.data ? (
+                <Link href={`/u/${me.data.username}`} className="nav-link nav-user" title={session.user.email}>
+                  {me.data.displayName ?? me.data.username}
+                </Link>
+              ) : (
+                <span className="nav-user">{session.user.email}</span>
+              )}
               <button type="button" className="nav-link" onClick={signOut}>
                 Sign out
               </button>

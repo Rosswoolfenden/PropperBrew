@@ -2,6 +2,7 @@ import { router } from "./init";
 import { beansRouter } from "./routers/beans";
 import { businessRouter } from "./routers/business";
 import { meRouter } from "./routers/me";
+import { usersRouter } from "./routers/users";
 import { recipesRouter } from "./routers/recipes";
 import { reviewsRouter } from "./routers/reviews";
 import { roastersRouter } from "./routers/roasters";
@@ -17,6 +18,7 @@ export const appRouter = router({
   shelf: shelfRouter,
   scanner: scannerRouter,
   me: meRouter,
+  users: usersRouter,
 });
 
 export type AppRouter = typeof appRouter;

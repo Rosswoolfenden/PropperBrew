@@ -36,6 +36,7 @@ export const webEnv = {
 /** Seeded accounts that sign in with a password (db/seed.sql). */
 export const accounts = {
   alice: { email: "alice@example.com", password: "password123", username: "alice" },
+  ben: { email: "ben@example.com", password: "password123", username: "ben" },
   northStarOwner: { email: "roaster@north-star.test", password: "password123", username: "north_star" },
 } as const;
 
