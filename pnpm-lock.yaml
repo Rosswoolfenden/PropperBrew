@@ -333,9 +333,18 @@ importers:
       '@propperbrew/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@supabase/supabase-js':
+        specifier: ^2.117.3
+        version: 2.117.3(@opentelemetry/api@1.9.1)
+      '@tanstack/react-query':
+        specifier: ^5.104.2
+        version: 5.104.2(react@19.3.0)
       '@trpc/client':
         specifier: ^11.19.0
         version: 11.19.0(@trpc/server@11.19.0(typescript@5.9.3))(typescript@5.9.3)
+      '@trpc/tanstack-react-query':
+        specifier: ^11.19.0
+        version: 11.19.0(@tanstack/react-query@5.104.2(react@19.3.0))(@trpc/client@11.19.0(@trpc/server@11.19.0(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.19.0(typescript@5.9.3))(react@19.3.0)(typescript@5.9.3)
       next:
         specifier: ^16.4.1
         version: 16.4.1(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.64.0)(@types/node@24.19.2)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -6462,6 +6471,11 @@ snapshots:
       '@tanstack/query-core': 5.104.2
       react: 19.2.3
 
+  '@tanstack/react-query@5.104.2(react@19.3.0)':
+    dependencies:
+      '@tanstack/query-core': 5.104.2
+      react: 19.3.0
+
   '@trpc/client@11.19.0(@trpc/server@11.19.0(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
       '@trpc/server': 11.19.0(typescript@5.9.3)
@@ -6477,6 +6491,14 @@ snapshots:
       '@trpc/client': 11.19.0(@trpc/server@11.19.0(typescript@5.9.3))(typescript@5.9.3)
       '@trpc/server': 11.19.0(typescript@5.9.3)
       react: 19.2.3
+      typescript: 5.9.3
+
+  '@trpc/tanstack-react-query@11.19.0(@tanstack/react-query@5.104.2(react@19.3.0))(@trpc/client@11.19.0(@trpc/server@11.19.0(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.19.0(typescript@5.9.3))(react@19.3.0)(typescript@5.9.3)':
+    dependencies:
+      '@tanstack/react-query': 5.104.2(react@19.3.0)
+      '@trpc/client': 11.19.0(@trpc/server@11.19.0(typescript@5.9.3))(typescript@5.9.3)
+      '@trpc/server': 11.19.0(typescript@5.9.3)
+      react: 19.3.0
       typescript: 5.9.3
 
   '@turbo/darwin-64@2.11.8':

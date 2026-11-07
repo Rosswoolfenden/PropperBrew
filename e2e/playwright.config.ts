@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { apiEnv, apiUrl, appEnv, ports } from "./fixtures";
+import { apiEnv, apiUrl, appEnv, ports, webEnv } from "./fixtures";
 
 const phone = { ...devices["Pixel 7"], viewport: { width: 390, height: 844 } };
 
@@ -13,10 +13,15 @@ export default defineConfig({
   reporter: [["list"]],
   use: { trace: "retain-on-failure" },
   projects: [
-    { name: "web", testMatch: "web.spec.ts", use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${ports.web}` } },
+    { name: "web", testMatch: /(web|accounts)\.spec\.ts/, use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${ports.web}` } },
     { name: "mobile", testMatch: "mobile.spec.ts", use: { ...phone, baseURL: `http://localhost:${ports.mobile}` } },
   ],
   webServer: [
+    {
+      name: "fake-shopify",
+      command: "corepack pnpm exec tsx fake-shopify.ts",
+      url: `http://localhost:${ports.fakeShopify}/health`,
+    },
     {
       name: "api",
       cwd: "../apps/api",
@@ -31,7 +36,7 @@ export default defineConfig({
       // Servers start in order, so the API is up for the build's prerender.
       command: `corepack pnpm exec next build && corepack pnpm exec next start --port ${ports.web}`,
       url: `http://localhost:${ports.web}`,
-      env: { NEXT_PUBLIC_API_URL: apiUrl },
+      env: webEnv,
       timeout: 240_000,
     },
     {

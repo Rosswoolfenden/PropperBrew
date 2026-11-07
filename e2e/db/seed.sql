@@ -1,42 +1,61 @@
--- Deterministic fixtures for the e2e suite. IDs and values here are asserted in tests/*.spec.ts
--- via fixtures.ts, so change them together.
+-- Deterministic fixtures for the e2e suite and the Docker preview. IDs and values here are
+-- asserted in tests/*.spec.ts via fixtures.ts, so change them together. Run by db/docker-init.sh,
+-- which sets :image_base to the API serving apps/api/public (the coffee photos).
 
--- Profiles are created by the on_auth_user_created trigger; pin the usernames afterwards.
-insert into auth.users (id, email) values
-  ('00000000-0000-4000-8000-00000000000a', 'alice@example.com'),
-  ('00000000-0000-4000-8000-00000000000b', 'ben@example.com');
+-- Accounts that can really sign in (password: password123), inserted the way the auth service
+-- stores them. Profiles come from the on_auth_user_created trigger; usernames are pinned after.
+insert into auth.users
+  (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data,
+   raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change)
+select '00000000-0000-0000-0000-000000000000', id::uuid, 'authenticated', 'authenticated', email,
+       extensions.crypt('password123', extensions.gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}',
+       meta::jsonb, now(), now(), '', '', '', ''
+from (values
+  ('00000000-0000-4000-8000-00000000000a', 'alice@example.com', '{}'),
+  ('00000000-0000-4000-8000-00000000000b', 'ben@example.com', '{}'),
+  ('00000000-0000-4000-8000-00000000000c', 'roaster@north-star.test', '{"account_type":"business"}')
+) as u(id, email, meta);
+
+insert into auth.identities (provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+select id, id, jsonb_build_object('sub', id::text, 'email', email, 'email_verified', true), 'email', now(), now(), now()
+from auth.users;
+
 update public.profiles set username = 'alice' where id = '00000000-0000-4000-8000-00000000000a';
 update public.profiles set username = 'ben' where id = '00000000-0000-4000-8000-00000000000b';
+update public.profiles set username = 'north_star' where id = '00000000-0000-4000-8000-00000000000c';
 
-insert into public.roasters (id, slug, name, city, bio, shopify_domain, shopify_uninstalled_at) values
+insert into public.roasters (id, slug, name, city, bio, shopify_domain, shopify_installed_at, shopify_uninstalled_at) values
   ('00000000-0000-4000-8000-000000000100', 'north-star', 'North Star Coffee Roasters', 'Leeds',
    'Leeds'' first specialty roastery, sourcing directly from producers they visit every harvest.',
-   'north-star-coffee.myshopify.com', null),
+   'north-star-coffee.myshopify.com', now() - interval '30 days', null),
   ('00000000-0000-4000-8000-000000000110', 'hackney-heights', 'Hackney Heights', 'London', null,
-   'hackney-heights.myshopify.com', null),
+   'hackney-heights.myshopify.com', now() - interval '10 days', null),
   -- Uninstalled the app, so nothing is in stock: left out of discovery.
   ('00000000-0000-4000-8000-000000000120', 'gone-quiet', 'Gone Quiet Roasters', 'Bristol', null,
-   'gone-quiet.myshopify.com', now());
+   'gone-quiet.myshopify.com', now() - interval '90 days', now());
+
+-- The demo business account runs North Star.
+insert into public.roaster_members (roaster_id, user_id, role) values
+  ('00000000-0000-4000-8000-000000000100', '00000000-0000-4000-8000-00000000000c', 'owner');
 
 insert into public.coffee_beans
   (id, roaster_id, slug, name, image_url, origin_country, region, producer, process, roast_level,
    varietals, altitude_masl, tasting_notes, avg_rating, review_count, created_at)
 values
   ('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000100', 'el-diviso',
-   'El Diviso Pink Bourbon',
-   'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 4 5%22%3E%3Crect width=%224%22 height=%225%22 fill=%22%23b7ccb9%22/%3E%3C/svg%3E',
+   'El Diviso Pink Bourbon', :'image_base' || '/mock/el-diviso.jpg',
    'Colombia', 'Huila', 'Néstor Lasso', 'washed', 'light',
    '{Pink Bourbon}', 1850, '{Rhubarb,Hibiscus,Pink grapefruit}', 45, 2, now()),
   -- Every variant is out of stock: hidden from "in stock" lists, page shows the sold-out note.
   ('00000000-0000-4000-8000-000000000202', '00000000-0000-4000-8000-000000000100', 'kiambu-ab',
-   'Kiambu AB', null, 'Kenya', null, null, 'natural', 'medium',
+   'Kiambu AB', :'image_base' || '/mock/kiambu.jpg', 'Kenya', null, null, 'natural', 'medium',
    '{}', null, '{Blackcurrant}', null, 0, now() - interval '1 day'),
   -- Hackney Heights' newest coffee is newer than North Star's, so they lead discovery.
   ('00000000-0000-4000-8000-000000000211', '00000000-0000-4000-8000-000000000110', 'kochere',
-   'Kochere Natural', null, 'Ethiopia', 'Yirgacheffe', null, 'natural', 'light',
+   'Kochere Natural', :'image_base' || '/mock/kochere.jpg', 'Ethiopia', 'Yirgacheffe', null, 'natural', 'light',
    '{Heirloom}', 2000, '{Blueberry,Jasmine}', null, 0, now() + interval '1 minute'),
   ('00000000-0000-4000-8000-000000000212', '00000000-0000-4000-8000-000000000110', 'cerrado',
-   'Cerrado Pulped Natural', null, 'Brazil', 'Cerrado Mineiro', null, 'honey', 'medium',
+   'Cerrado Pulped Natural', :'image_base' || '/mock/cerrado.jpg', 'Brazil', 'Cerrado Mineiro', null, 'honey', 'medium',
    '{Yellow Bourbon}', null, '{Hazelnut,Milk chocolate}', null, 0, now() - interval '2 days'),
   ('00000000-0000-4000-8000-000000000221', '00000000-0000-4000-8000-000000000120', 'old-faithful',
    'Old Faithful', null, 'Guatemala', null, null, 'washed', 'medium',

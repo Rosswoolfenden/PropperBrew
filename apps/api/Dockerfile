@@ -11,6 +11,8 @@ FROM node:22-slim
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /repo/apps/api/dist ./dist
+# Sample coffee photos for seeded/demo data (served at /mock/*).
+COPY --from=build /repo/apps/api/public ./public
 USER node
 EXPOSE 8080
 CMD ["node", "--enable-source-maps", "dist/index.js"]

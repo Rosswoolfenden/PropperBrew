@@ -14,7 +14,7 @@ const CRASH = /^(render error|uncaught error|log \d+ of \d+|console error)$/i;
 export const adb = (...args: string[]) =>
   execFileSync(adbPath, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 20_000 });
 
-type Node = { text: string; desc: string; x: number; y: number };
+type Node = { text: string; desc: string; enabled: boolean; x: number; y: number };
 
 const decode = (s: string) =>
   s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)));
@@ -35,29 +35,44 @@ export class Device {
    * Cold-start the app on a route, e.g. "/bean/north-star/el-diviso", so each test starts from
    * a known state rather than wherever the last one left off.
    */
-  launch(path: string) {
+  async launch(path: string) {
     adb("shell", "am", "force-stop", EXPO_GO);
-    // `adb shell` runs this through the device's shell: quote the URL so `&` survives.
-    adb("shell", "am", "start", "-W", "-a", "android.intent.action.VIEW", "-d", `'${this.metroUrl}/--${path}'`, EXPO_GO);
+    for (let attempt = 1; ; attempt++) {
+      // `adb shell` runs this through the device's shell: quote the URL so `&` survives.
+      adb("shell", "am", "start", "-W", "-a", "android.intent.action.VIEW", "-d", `'${this.metroUrl}/--${path}'`, EXPO_GO);
+      await sleep(1500);
+      // On a cold start Expo Go sometimes routes the link through its launcher activity, which
+      // closes without opening the app. Sending the link again opens it.
+      const front = adb("shell", "dumpsys", "activity", "activities").match(/(?:topResumedActivity|mResumedActivity)=.*/)?.[0] ?? "";
+      if (front.includes("ExperienceActivity")) return;
+      if (attempt === 3) throw new Error(`Expo Go didn't open ${path}`);
+    }
   }
 
   /** Everything currently on screen. Text is as displayed (e.g. upper-cased labels). */
   async screen(): Promise<Node[]> {
     for (let attempt = 0; ; attempt++) {
       try {
-        adb("shell", "uiautomator", "dump", "/sdcard/ui.xml");
+        // uiautomator exits 0 even when it fails (e.g. "could not get idle state" while
+        // something animates) and leaves the previous file behind. Remove it first and only
+        // trust a dump that reports success, so we never read an old screen.
+        const out = adb("shell", "rm -f /sdcard/ui.xml && uiautomator dump /sdcard/ui.xml");
+        if (!out.includes("dumped to")) throw new Error(`uiautomator: ${out.trim()}`);
         const xml = adb("shell", "cat", "/sdcard/ui.xml");
-        return [...xml.matchAll(/<node [^>]*?text="([^"]*)"[^>]*?content-desc="([^"]*)"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/g)].map(
-          ([, text, desc, x1, y1, x2, y2]) => ({
-            text: decode(text!),
-            desc: decode(desc!),
-            x: (Number(x1) + Number(x2)) / 2,
-            y: (Number(y1) + Number(y2)) / 2,
-          }),
-        );
+        return [...xml.matchAll(/<node ([^>]*?)\/?>/g)].map(([, attrs]) => {
+          const attr = (name: string) => decode(new RegExp(`\\b${name}="([^"]*)"`).exec(attrs!)?.[1] ?? "");
+          const [x1, y1, x2, y2] = (attr("bounds").match(/\d+/g) ?? ["0", "0", "0", "0"]).map(Number);
+          return {
+            text: attr("text"),
+            desc: attr("content-desc"),
+            enabled: attr("enabled") !== "false",
+            x: (x1! + x2!) / 2,
+            y: (y1! + y2!) / 2,
+          };
+        });
       } catch (err) {
         // uiautomator refuses while the UI is mid-animation; try again shortly.
-        if (attempt >= 5) throw err;
+        if (attempt >= 10) throw err;
         await sleep(500);
       }
     }
@@ -89,14 +104,23 @@ export class Device {
     }
   }
 
-  /** Scroll down until `label` is on screen. */
-  async scrollTo(label: string | RegExp, maxSwipes = 12) {
+  /**
+   * Scroll down until `label` is on screen and above `maxY` (px from the top). The default
+   * clears Android's navigation bar; screens with a fixed bottom bar pass a smaller value.
+   */
+  async scrollTo(label: string | RegExp, { maxY = 2150, maxSwipes = 15 } = {}) {
+    let previous = "";
+    let stuck = 0;
     for (let i = 0; i <= maxSwipes; i++) {
       const nodes = await this.screen();
       this.assertNoCrash(nodes);
       const node = this.find(nodes, label);
-      // Keep it clear of the bottom bar so a tap lands on it.
-      if (node && node.y < 1800) return;
+      if (node && node.y < maxY) return;
+      const signature = nodes.map((n) => `${n.text}|${n.desc}|${n.y}`).join("\n");
+      // Two swipes in a row that move nothing means the end (a single one can be swallowed).
+      stuck = signature === previous ? stuck + 1 : 0;
+      if (stuck >= 2) break;
+      previous = signature;
       // A slow drag rather than a fling, so the list settles before the next look.
       adb("shell", "input", "swipe", "540", "1700", "540", "1000", "700");
       await sleep(900);
@@ -104,12 +128,28 @@ export class Device {
     throw new Error(`Couldn't scroll to: ${label}`);
   }
 
+  /** Tap `label` once it's on screen, enabled, and the screen has stopped moving. */
   async tap(label: string | RegExp) {
-    const nodes = await this.screen();
-    this.assertNoCrash(nodes);
+    await this.expect([label]);
+    for (let i = 0; i < 20 && !this.find(await this.screen(), label)?.enabled; i++) await sleep(500);
+    // A tap on a still-gliding list only stops the scroll (as it would for a person).
+    let nodes = await this.screen();
+    for (let i = 0; i < 10; i++) {
+      await sleep(300);
+      const next = await this.screen();
+      const same = next.length === nodes.length && next.every((n, j) => n.y === nodes[j]!.y);
+      nodes = next;
+      if (same) break;
+    }
     const node = this.find(nodes, label);
     if (!node) throw new Error(`Nothing to tap: ${label}`);
-    adb("shell", "input", "tap", String(Math.round(node.x)), String(Math.round(node.y)));
+    await this.tapAt(node);
+    return { x: node.x, y: node.y };
+  }
+
+  /** Tap a point, e.g. where a button was, when the screen can't be read (see uiautomator). */
+  async tapAt({ x, y }: { x: number; y: number }) {
+    adb("shell", "input", "tap", String(Math.round(x)), String(Math.round(y)));
     await sleep(400);
   }
 

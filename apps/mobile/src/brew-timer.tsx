@@ -13,35 +13,39 @@ export function activeStepIndex(steps: readonly RecipeStep[], elapsed: number): 
   return active;
 }
 
-/** A stopwatch measured against the wall clock, so it stays accurate if ticks are delayed. */
+/**
+ * A stopwatch measured against the wall clock, so it stays accurate if ticks are delayed.
+ * It checks four times a second but only re-renders when the whole second changes.
+ */
 export function useBrewTimer() {
   const [startedAt, setStartedAt] = useState<number | null>(null);
-  const [banked, setBanked] = useState(0);
-  const [now, setNow] = useState(() => Date.now());
+  const [bankedMs, setBankedMs] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
     if (startedAt === null) return;
-    const id = setInterval(() => setNow(Date.now()), 250);
+    // Same number as last time → React skips the render.
+    const tick = () => setElapsed(Math.floor((bankedMs + Date.now() - startedAt) / 1000));
+    tick();
+    const id = setInterval(tick, 250);
     return () => clearInterval(id);
-  }, [startedAt]);
-
-  const running = startedAt !== null;
-  const elapsed = Math.floor((banked + (running ? now - startedAt : 0)) / 1000);
+  }, [startedAt, bankedMs]);
 
   return {
     elapsed,
-    running,
-    start: () => {
-      setNow(Date.now());
-      setStartedAt(Date.now());
-    },
+    running: startedAt !== null,
+    start: () => setStartedAt(Date.now()),
     pause: () => {
-      if (startedAt !== null) setBanked((b) => b + Date.now() - startedAt);
+      if (startedAt === null) return;
+      const banked = bankedMs + Date.now() - startedAt;
+      setBankedMs(banked);
+      setElapsed(Math.floor(banked / 1000));
       setStartedAt(null);
     },
     reset: () => {
       setStartedAt(null);
-      setBanked(0);
+      setBankedMs(0);
+      setElapsed(0);
     },
   };
 }

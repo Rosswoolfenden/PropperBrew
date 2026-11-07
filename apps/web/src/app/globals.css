@@ -26,7 +26,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 32px 24px 112px; }
   background: color-mix(in srgb, var(--surface) 80%, transparent);
   backdrop-filter: blur(20px);
 }
-.site-header-inner { max-width: 1040px; margin: 0 auto; padding: 16px 24px; text-align: center; }
+.site-header-inner { max-width: 1040px; margin: 0 auto; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 72px; }
 .logo { font: 800 1.25rem var(--font-headline); letter-spacing: -0.04em; color: var(--primary); text-decoration: none; }
 
 /* Type roles */
@@ -39,6 +39,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 32px 24px 112px; }
 .lead { font-size: 1.25rem; line-height: 1.6; color: color-mix(in srgb, var(--on-surface) 80%, transparent); }
 .subtitle { font-size: 1.125rem; font-style: italic; color: var(--on-surface-variant); }
 .muted { color: var(--on-surface-variant); }
+.italic { font-style: italic; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 .section { margin-top: 96px; }
@@ -83,6 +84,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 32px 24px 112px; }
 .rule-link { display: inline-flex; align-items: center; gap: 8px; font: 700 10px var(--font-headline); text-transform: uppercase; letter-spacing: 0.1rem; color: var(--primary); text-decoration: none; }
 .rule-link::before { content: ""; width: 32px; height: 1px; background: var(--primary); }
 
+.intro { display: grid; gap: 16px; margin-bottom: 48px; max-width: 760px; }
 .section-tight { margin-bottom: 80px; }
 /* The Collection: two columns, right-hand one dropped for the design's asymmetry. */
 .collection { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(45%, 220px), 1fr)); gap: 48px 16px; padding: 0; margin: 0; list-style: none; }
@@ -181,3 +183,64 @@ main { max-width: 1040px; margin: 0 auto; padding: 32px 24px 112px; }
 .review-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
 .review-author { font: 700 12px var(--font-headline); text-transform: uppercase; letter-spacing: 0.1rem; color: var(--secondary); }
 .review-body { font-size: 1.125rem; line-height: 1.6; color: var(--on-surface-variant); }
+
+/* Banner: account links */
+.site-nav { display: flex; align-items: center; gap: 20px; }
+.nav-link {
+  font: 700 11px var(--font-headline); text-transform: uppercase; letter-spacing: 0.1rem;
+  color: var(--primary); text-decoration: none; background: none; border: 0; padding: 8px 0; cursor: pointer;
+}
+.nav-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+.nav-user { font: italic 0.95rem var(--font-body); color: var(--on-surface-variant); max-width: 16ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.button-sm { flex: none; height: 40px; padding: 0 18px; font-size: 11px; }
+button.button { border: 0; cursor: pointer; width: 100%; }
+button.button:disabled { opacity: 0.6; cursor: default; }
+.button-shopify { background: var(--primary); }
+@media (max-width: 480px) { .nav-user { display: none; } .site-nav { gap: 14px; } }
+
+/* Forms */
+.auth-page { max-width: 420px; margin: 24px auto 0; display: grid; gap: 40px; }
+.auth-intro { display: grid; gap: 12px; text-align: center; justify-items: center; }
+.auth-intro .display { font-size: clamp(2.25rem, 7vw, 3rem); }
+.auth-form { display: grid; gap: 20px; }
+.field { display: grid; gap: 6px; }
+.field input {
+  font: 1.05rem var(--font-body); color: var(--on-surface); background: var(--surface-container-highest);
+  border: 0; border-bottom: 2px solid transparent; border-radius: 6px; padding: 16px; outline: none;
+}
+.field input:focus { border-bottom-color: var(--primary); }
+.field input::placeholder { color: var(--outline); }
+.auth-switch { display: flex; justify-content: center; align-items: baseline; gap: 8px; }
+.text-button { background: none; border: 0; cursor: pointer; padding: 4px; font: 700 11px var(--font-headline); text-transform: uppercase; letter-spacing: 0.1rem; color: var(--primary); }
+.alert { padding: 14px 18px; border-radius: 6px; font-size: 0.95rem; }
+.alert-error { background: color-mix(in srgb, var(--error) 10%, var(--surface)); color: var(--error); }
+.alert-info { background: var(--surface-container-low); color: var(--primary); }
+
+/* For roasters */
+.business-alert { margin-bottom: 32px; }
+.business-auth { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); align-items: start; }
+.business-auth h2, .connect-store h2 { margin-bottom: 0; font-size: 1.25rem; }
+
+/* Dashboard */
+.dashboard { display: grid; gap: 32px; }
+.dashboard .intro { margin-bottom: 0; }
+.roaster-panel { display: grid; gap: 24px; }
+.panel-head { display: flex; align-items: baseline; gap: 12px; }
+.panel-head h2 { margin: 0; }
+.panel-subhead { font-size: 1.125rem; font-weight: 700; margin-top: 8px; }
+.stats { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.stat { display: grid; gap: 4px; padding: 24px; border-radius: 12px; background: var(--surface-container-lowest); box-shadow: var(--ambient-shadow); }
+.stat strong { font: 700 1.5rem var(--font-headline); color: var(--primary); }
+.coffee-lines { display: grid; gap: 4px; padding: 0; margin: 0; list-style: none; }
+.coffee-line { display: grid; grid-template-columns: 56px 1fr auto auto; align-items: center; gap: 16px; padding: 12px 16px; border-radius: 12px; background: var(--surface-container-low); }
+.coffee-line .frame { width: 56px; aspect-ratio: 1; border-radius: 8px; }
+.coffee-line-body { display: grid; gap: 2px; min-width: 0; }
+.coffee-line-body a { font: 700 1rem var(--font-headline); color: var(--primary); text-decoration: none; }
+.coffee-line-body a:hover { text-decoration: underline; }
+.coffee-line-price { font: 700 0.95rem var(--font-headline); min-width: 4.5em; text-align: right; }
+.status { font: 700 10px var(--font-headline); text-transform: uppercase; letter-spacing: 0.08em; padding: 4px 10px; border-radius: 12px; }
+.status-in_stock { background: color-mix(in srgb, var(--surface-tint) 15%, transparent); color: var(--primary); }
+.status-sold_out { background: var(--secondary-container); color: var(--on-secondary-container); }
+.status-archived { background: var(--surface-container-highest); color: var(--on-surface-variant); }
+@media (max-width: 560px) { .coffee-line { grid-template-columns: 48px 1fr auto; } .coffee-line-price { display: none; } }
+.connect-form { display: grid; gap: 16px; }

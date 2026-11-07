@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Manrope, Newsreader } from "next/font/google";
-import Link from "next/link";
+import { SiteHeader } from "@/components/site-header";
 import { themeCss } from "@/lib/theme-css";
+import { Providers } from "./providers";
 import "./globals.css";
 
 const manrope = Manrope({ subsets: ["latin"], weight: ["400", "500", "700", "800"], variable: "--font-manrope" });
@@ -24,14 +25,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="stylesheet" href={ICONS_URL} />
       </head>
       <body>
-        <header className="site-header">
-          <div className="site-header-inner">
-            <Link href="/" className="logo">
-              PropperBrew
-            </Link>
-          </div>
-        </header>
-        <main>{children}</main>
+        <Providers>
+          <SiteHeader />
+          <main>{children}</main>
+        </Providers>
       </body>
     </html>
   );

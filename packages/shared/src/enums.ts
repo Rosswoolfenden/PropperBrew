@@ -58,6 +58,15 @@ export const GRIND_OPTIONS = [
 export const GrindOption = z.enum(GRIND_OPTIONS);
 export type GrindOption = z.infer<typeof GrindOption>;
 
+/** Consumers drink and review; business accounts belong to roasters (see roaster_members). */
+export const ACCOUNT_TYPES = ["consumer", "business"] as const;
+export const AccountType = z.enum(ACCOUNT_TYPES);
+export type AccountType = z.infer<typeof AccountType>;
+
+export const ROASTER_ROLES = ["owner", "staff"] as const;
+export const RoasterRole = z.enum(ROASTER_ROLES);
+export type RoasterRole = z.infer<typeof RoasterRole>;
+
 export const ORDER_STATUSES = [
   "pending_payment",
   "paid",

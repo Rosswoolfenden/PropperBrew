@@ -3,7 +3,7 @@
  * data flow; native-only behaviour (camera capture, push) is out of reach here.
  */
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
-import { accessToken, apiUrl, rgb, seed } from "../fixtures";
+import { accessToken, accounts, apiUrl, rgb, seed } from "../fixtures";
 
 const beanPath = `/bean/${seed.roaster.slug}/${seed.inStock.slug}`;
 /** The in-screen headline; the native-stack header renders the same title as a level-1 heading. */
@@ -84,6 +84,17 @@ test.describe("discover", () => {
     await page.goBack();
     await page.getByRole("button", { name: "Scan a bag" }).click();
     await expect(page).toHaveURL("/scan");
+  });
+
+  test("shows the coffee photos", async ({ page }) => {
+    await page.goto("/");
+    // react-native-web renders each Image with an <img> of the same source. Every in-stock
+    // coffee's photo must be there and have loaded.
+    for (const name of ["el-diviso", "kochere", "cerrado"]) {
+      const img = page.locator(`img[src$="/mock/${name}.jpg"]`).first();
+      await expect(img).toBeAttached();
+      await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
+    }
   });
 
   test("coffee rows scroll sideways", async ({ page }) => {
@@ -483,6 +494,21 @@ test.describe("shelf", () => {
 
     await page.getByRole("button", { name: "Close" }).click();
     await expect(page).toHaveURL("/shelf");
+  });
+
+  test("signing in through the form shows your shelf", async ({ page }) => {
+    await page.goto("/sign-in");
+    await page.getByLabel("Email address").fill(accounts.alice.email);
+    await page.getByLabel("Password").fill(accounts.alice.password);
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    // A real session from the auth service, stored by supabase-js...
+    await expect
+      .poll(() => page.evaluate(() => Object.keys(localStorage).some((k) => k.endsWith("-auth-token"))))
+      .toBe(true);
+    // ...that the shelf then loads with.
+    await page.goto("/shelf");
+    await expect(page.getByText(seed.soldOut.name)).toBeVisible();
+    await expect(page.getByText(/^Day 10 post-roast$/).first()).toBeVisible();
   });
 
   test("lists the signed-in user's bags with their rest state", async ({ page }) => {

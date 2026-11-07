@@ -1,7 +1,9 @@
 # Local preview of the whole stack with sample data and no real keys:  docker compose up --build
-# Website http://localhost:3000, app (web build) http://localhost:8081, API http://localhost:4000.
-# Sign-in, Shopify sync and the bag scanner need real credentials and won't work here.
-# `docker compose down` throws the data away; the next `up` reseeds it.
+# Website http://localhost:3000, app (web build) http://localhost:8081, API http://localhost:4000,
+# auth (Supabase-compatible) http://127.0.0.1:54321. Sample sign-ins (password "password123"):
+# alice@example.com (coffee drinker) and roaster@north-star.test (business, runs North Star).
+# Shopify sync and the bag scanner need real credentials and won't work here.
+# `docker compose down -v` throws the data away; the next `up` reseeds it.
 
 name: propperbrew
 
@@ -10,15 +12,72 @@ services:
     image: pgvector/pgvector:pg17
     environment:
       POSTGRES_PASSWORD: postgres
+      AUTH_DB_PASSWORD: auth
     volumes:
-      - ./supabase/migrations:/migrations:ro
       - ./e2e/db:/fixtures:ro
       - ./e2e/db/docker-init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    ports:
+      - ${DB_PORT:-54322}:5432
     healthcheck:
-      # Only listens on TCP once the init script (migrations + seed) has finished.
+      # Only listens on TCP once the init script has finished.
       test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres"]
       interval: 2s
       retries: 30
+
+  # Supabase's auth service. Creates and owns the auth.* tables.
+  auth:
+    image: supabase/gotrue:v2.197.0
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      PORT: "9999"
+      API_EXTERNAL_URL: http://127.0.0.1:${SUPABASE_PORT:-54321}/auth/v1
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:auth@db:5432/postgres
+      GOTRUE_SITE_URL: http://localhost:${WEB_PORT:-3000}
+      # Where sign-in links may send people back to (any local port, and the app's schemes).
+      GOTRUE_URI_ALLOW_LIST: http://localhost:*/**,http://127.0.0.1:*/**,propperbrew://**,exp://**
+      # Placeholder for local use. The auth service signs sessions with it; the API checks them with it.
+      GOTRUE_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_EXP: "3600"
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      # No mail server locally: new accounts are confirmed straight away.
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9999/health"]
+      interval: 2s
+      retries: 30
+
+  # Applies supabase/migrations and the seed once auth.* exists, then exits.
+  migrate:
+    image: pgvector/pgvector:pg17
+    command: ["sh", "/fixtures/migrate.sh"]
+    environment:
+      POSTGRES_PASSWORD: postgres
+      # Where the seeded coffee photos are served from (the API's /mock/*).
+      IMAGE_BASE_URL: http://localhost:${API_PORT:-4000}
+    volumes:
+      - ./supabase/migrations:/migrations:ro
+      - ./e2e/db:/fixtures:ro
+    depends_on:
+      auth:
+        condition: service_healthy
+
+  # Serves the auth service at /auth/v1, like Supabase's gateway, so clients use the usual URL.
+  gateway:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./supabase/local/gateway.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - ${SUPABASE_PORT:-54321}:80
+    depends_on:
+      auth:
+        condition: service_healthy
 
   api:
     build:
@@ -27,19 +86,22 @@ services:
     environment:
       PORT: "4000"
       PUBLIC_API_URL: http://localhost:${API_PORT:-4000}
+      PUBLIC_WEB_URL: http://localhost:${WEB_PORT:-3000}
       DATABASE_URL: postgresql://postgres:postgres@db:5432/postgres
-      # Placeholders for local preview only.
       TOKEN_ENCRYPTION_KEY: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=
-      SUPABASE_URL: http://127.0.0.1:54321
-      SUPABASE_JWT_SECRET: local-preview-secret-at-least-32-characters
+      # Inside the compose network, the gateway is http://gateway.
+      SUPABASE_URL: http://gateway
+      SUPABASE_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
       SHOPIFY_API_KEY: placeholder
       SHOPIFY_API_SECRET: placeholder
       SHOPIFY_SCOPES: read_products
     ports:
       - ${API_PORT:-4000}:4000
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      gateway:
+        condition: service_started
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:4000/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
       interval: 2s
@@ -50,8 +112,12 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
     environment:
-      # Only used server-side, so it can use the compose network name.
-      NEXT_PUBLIC_API_URL: http://api:4000
+      # Server-side rendering talks to the API over the compose network...
+      API_URL: http://api:4000
+      # ...while the browser uses the host's ports.
+      NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-4000}
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:${SUPABASE_PORT:-54321}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: local-anon-key
     ports:
       - ${WEB_PORT:-3000}:3000
     depends_on:
@@ -63,8 +129,9 @@ services:
       context: .
       dockerfile: apps/mobile/Dockerfile.web
       args:
-        # Called from your browser, so it has to be the API's address on the host.
+        # Called from your browser, so these are the host's addresses.
         EXPO_PUBLIC_API_URL: http://localhost:${API_PORT:-4000}
+        EXPO_PUBLIC_SUPABASE_URL: http://127.0.0.1:${SUPABASE_PORT:-54321}
     ports:
       - ${MOBILE_PORT:-8081}:80
     depends_on:

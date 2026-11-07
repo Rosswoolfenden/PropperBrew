@@ -22,6 +22,20 @@
       "when": 1792009502870,
       "tag": "20261014202502_roaster_recipes",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794081715737,
+      "tag": "20261107200155_business_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794081725011,
+      "tag": "20261107200205_business_signup",
+      "breakpoints": true
     }
   ]
 }

@@ -3,6 +3,7 @@ import { roasters } from "@propperbrew/db";
 import { env } from "../env";
 import { db } from "../lib/db";
 import { decrypt } from "../lib/crypto";
+import { shopOrigin } from "./origin";
 
 export class ShopifyAdminError extends Error {}
 
@@ -12,7 +13,7 @@ export async function adminGraphql<T>(
   query: string,
   variables?: Record<string, unknown>,
 ): Promise<T> {
-  const res = await fetch(`https://${shop}/admin/api/${env.SHOPIFY_API_VERSION}/graphql.json`, {
+  const res = await fetch(`${shopOrigin(shop)}/admin/api/${env.SHOPIFY_API_VERSION}/graphql.json`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-shopify-access-token": accessToken },
     body: JSON.stringify({ query, variables }),

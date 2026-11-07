@@ -1,10 +1,7 @@
 #!/bin/sh
-# Runs from /docker-entrypoint-initdb.d on the database's first start. Expects the repo's
-# supabase/migrations mounted at /migrations and this folder at /fixtures.
+# Runs from /docker-entrypoint-initdb.d on the database's first start: just the roles and schemas
+# the auth service needs (bootstrap.sql). Migrations and the seed come later, from migrate.sh,
+# once the auth service has created its tables.
 set -e
 
-run() { psql -v ON_ERROR_STOP=1 -q -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f "$1"; }
-
-run /fixtures/bootstrap.sql
-for migration in /migrations/*.sql; do run "$migration"; done
-run /fixtures/seed.sql
+psql -v ON_ERROR_STOP=1 -v auth_password="${AUTH_DB_PASSWORD:?}" -q -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f /fixtures/bootstrap.sql

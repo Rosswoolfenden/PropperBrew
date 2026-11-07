@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { rgb, seed } from "../fixtures";
+import { apiUrl, rgb, seed } from "../fixtures";
 
 const beanPath = (slug: string) => `/${seed.roaster.slug}/${slug}`;
 const css = (page: Page, selector: string, prop: string) =>
@@ -118,6 +118,40 @@ test.describe("discover", () => {
     await page.goto("/");
     await expect(page.getByRole("region", { name: "Roaster spotlight" })).toBeVisible();
     await expectNoHorizontalScroll(page);
+  });
+});
+
+/** Every <img> matched has finished loading a real image (not a broken link). */
+async function expectImagesLoaded(page: Page, selector: string, atLeast: number) {
+  const images = page.locator(selector);
+  await expect(images).not.toHaveCount(0);
+  expect(await images.count()).toBeGreaterThanOrEqual(atLeast);
+  for (const img of await images.all()) {
+    await img.scrollIntoViewIfNeeded();
+    await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
+  }
+}
+
+test.describe("coffee photos", () => {
+  test("the API serves them as cacheable JPEGs, and nothing else", async ({ request }) => {
+    const photo = await request.get(`${apiUrl}/mock/kochere.jpg`);
+    expect(photo.status()).toBe(200);
+    expect(photo.headers()["content-type"]).toBe("image/jpeg");
+    expect(photo.headers()["cache-control"]).toContain("max-age=86400");
+    expect((await photo.body()).length).toBeGreaterThan(10_000);
+
+    expect((await request.get(`${apiUrl}/mock/nope.jpg`)).status()).toBe(404);
+    expect((await request.get(`${apiUrl}/mock/..%2fpackage.json`)).status()).toBe(404);
+    expect((await request.get(`${apiUrl}/mock/../package.json`)).status()).toBe(404);
+  });
+
+  test("show on discover and the bean page", async ({ page }) => {
+    await page.goto("/");
+    await expectImagesLoaded(page, ".coffee-card img", 3);
+    await expectImagesLoaded(page, ".arrival img", 3);
+    await expectImagesLoaded(page, ".spotlight-card img", 2);
+    await page.goto(beanPath(seed.inStock.slug));
+    await expectImagesLoaded(page, `img[alt="${seed.inStock.name}"]`, 1);
   });
 });
 

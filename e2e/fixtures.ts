@@ -1,7 +1,12 @@
+import { execFileSync } from "node:child_process";
 import { createHmac } from "node:crypto";
+import { join } from "node:path";
 
-export const ports = { db: 54329, api: 4100, web: 3100, mobile: 8181 } as const;
+export const ports = { db: 54329, supabase: 54339, api: 4100, web: 3100, mobile: 8181, fakeShopify: 4199 } as const;
 export const apiUrl = `http://localhost:${ports.api}`;
+export const webUrl = `http://localhost:${ports.web}`;
+/** The auth service, behind the Supabase-style gateway (see compose.yaml). */
+export const supabaseUrl = `http://127.0.0.1:${ports.supabase}`;
 export const jwtSecret = "e2e-jwt-secret-with-at-least-32-characters";
 
 /** Environment for the API under test (placeholder secrets; nothing external is called). */
@@ -9,20 +14,36 @@ export const apiEnv = {
   NODE_ENV: "test",
   PORT: String(ports.api),
   PUBLIC_API_URL: apiUrl,
+  PUBLIC_WEB_URL: webUrl,
   DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${ports.db}/postgres`,
   TOKEN_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
-  SUPABASE_URL: "http://127.0.0.1:54321",
+  SUPABASE_URL: supabaseUrl,
   SUPABASE_JWT_SECRET: jwtSecret,
   SHOPIFY_API_KEY: "e2e",
   SHOPIFY_API_SECRET: "e2e",
   SHOPIFY_SCOPES: "read_products",
+  // OAuth and Admin API calls go to e2e/fake-shopify.ts.
+  SHOPIFY_ORIGIN_OVERRIDE: `http://localhost:${ports.fakeShopify}`,
 };
+
+/** NEXT_PUBLIC_* values for the website under test (baked in at build time). */
+export const webEnv = {
+  NEXT_PUBLIC_API_URL: apiUrl,
+  NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: "e2e-anon-key",
+};
+
+/** Seeded accounts that sign in with a password (db/seed.sql). */
+export const accounts = {
+  alice: { email: "alice@example.com", password: "password123", username: "alice" },
+  northStarOwner: { email: "roaster@north-star.test", password: "password123", username: "north_star" },
+} as const;
 
 /** EXPO_PUBLIC_* values for the app under test. */
 export const appEnv = {
   EXPO_PUBLIC_API_URL: apiUrl,
-  EXPO_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
-  // The app throws without one; the suite never talks to Supabase itself.
+  EXPO_PUBLIC_SUPABASE_URL: supabaseUrl,
+  // Any value works locally; the auth service doesn't check it.
   EXPO_PUBLIC_SUPABASE_ANON_KEY: "e2e-anon-key",
   EXPO_NO_TELEMETRY: "1",
 };
@@ -76,3 +97,14 @@ export function accessToken(user: { id: string; email: string }, ttlSeconds = 36
   const signature = createHmac("sha256", jwtSecret).update(`${header}.${payload}`).digest("base64url");
   return { token: `${header}.${payload}.${signature}`, exp };
 }
+
+/** Run SQL against the test database (the propperbrew-e2e compose project from setup-db.ts). */
+export function sql(query: string): string {
+  return execFileSync("docker", ["compose", "--project-name", "propperbrew-e2e", "exec", "-T", "db", "psql", "-U", "postgres", "-tAc", query], {
+    cwd: join(import.meta.dirname, ".."),
+    encoding: "utf8",
+  }).trim();
+}
+
+/** Shopify stores in db/seed.sql. Anything else was connected by a test. */
+export const seededShopDomains = ["north-star-coffee.myshopify.com", "hackney-heights.myshopify.com", "gone-quiet.myshopify.com"];

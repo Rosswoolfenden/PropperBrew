@@ -1,10 +1,10 @@
--- The bits of a Supabase database that supabase/migrations depend on, so the e2e suite can run
--- the real migrations against plain Postgres without the Supabase CLI.
+-- What a Supabase database has before its auth service (GoTrue) first starts: the role GoTrue
+-- connects as and the schemas it and supabase/migrations expect. GoTrue then creates auth.* itself.
+-- Run by docker-init.sh with -v auth_password=…
 create schema if not exists extensions;
-create schema if not exists auth;
+create extension if not exists pgcrypto with schema extensions;
 
-create table auth.users (
-  id uuid primary key,
-  email text,
-  raw_user_meta_data jsonb not null default '{}'::jsonb
-);
+create role supabase_auth_admin login password :'auth_password' noinherit createrole;
+create schema auth authorization supabase_auth_admin;
+grant create on database postgres to supabase_auth_admin;
+alter role supabase_auth_admin set search_path = auth;

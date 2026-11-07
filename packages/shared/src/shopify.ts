@@ -11,3 +11,17 @@ export function shopifyCartUrl(shopDomain: string, variantId: string, quantity: 
   }
   return `https://${shopDomain}/cart/${encodeURIComponent(variantId)}:${quantity}`;
 }
+
+/**
+ * What a roaster types for their store ("north-star", "north-star.myshopify.com",
+ * "https://north-star.myshopify.com/admin") → "north-star.myshopify.com", or null if it can't be one.
+ */
+export function normalizeShopDomain(input: string): string | null {
+  const host = input
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .split(/[/?#]/)[0]!;
+  const domain = host.includes(".") ? host : `${host}.myshopify.com`;
+  return /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(domain) ? domain : null;
+}

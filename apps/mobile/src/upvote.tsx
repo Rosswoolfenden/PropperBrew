@@ -17,7 +17,7 @@ export function UpvoteButton({ recipe }: { recipe: { id: string; upvotesCount: n
   const colors = useColors();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const { session } = useSession();
+  const { session, ready } = useSession();
   const [state, setState] = useState({ count: recipe.upvotesCount, mine: recipe.upvotedByMe });
 
   // Follow fresh server data (e.g. after signing in, or a refetch).
@@ -44,7 +44,8 @@ export function UpvoteButton({ recipe }: { recipe: { id: string; upvotesCount: n
       aria-pressed={state.mine}
       aria-label={`${state.mine ? "Remove upvote" : "Upvote"}, ${state.count} ${state.count === 1 ? "upvote" : "upvotes"}`}
       onPress={press}
-      disabled={toggle.isPending}
+      // Until the stored session has been read we can't tell a signed-in user from a signed-out one.
+      disabled={!ready || toggle.isPending}
       hitSlop={6}
       style={({ pressed }) => [styles.button, state.mine && styles.mine, pressed && { opacity: 0.8 }]}
     >

@@ -16,11 +16,13 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import {
+  ACCOUNT_TYPES,
   BREW_METHODS,
   GRIND_OPTIONS,
   ORDER_STATUSES,
   PROCESSES,
   ROAST_LEVELS,
+  ROASTER_ROLES,
   type FlavourScores,
   type RecipeStep,
 } from "@propperbrew/shared";
@@ -30,6 +32,8 @@ export const roastLevelEnum = pgEnum("roast_level", ROAST_LEVELS);
 export const brewMethodEnum = pgEnum("brew_method", BREW_METHODS);
 export const grindOptionEnum = pgEnum("grind_option", GRIND_OPTIONS);
 export const orderStatusEnum = pgEnum("order_status", ORDER_STATUSES);
+export const accountTypeEnum = pgEnum("account_type", ACCOUNT_TYPES);
+export const roasterRoleEnum = pgEnum("roaster_role", ROASTER_ROLES);
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -49,6 +53,8 @@ export const profiles = pgTable("profiles", {
   defaultGrinder: text("default_grinder"),
   defaultBrewMethod: brewMethodEnum("default_brew_method"),
   expoPushToken: text("expo_push_token"),
+  /** Set from sign-up metadata by public.handle_new_user(). */
+  accountType: accountTypeEnum("account_type").notNull().default("consumer"),
   ...timestamps,
 });
 
@@ -80,6 +86,22 @@ export const roasters = pgTable(
     ...timestamps,
   },
   (t) => [check("commission_bps_range", sql`${t.commissionBps} between 0 and 5000`)],
+);
+
+/** People who run a roaster on PropperBrew. Added when they connect, or sign in with, the roaster's Shopify store. */
+export const roasterMembers = pgTable(
+  "roaster_members",
+  {
+    roasterId: uuid("roaster_id")
+      .notNull()
+      .references(() => roasters.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    role: roasterRoleEnum("role").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.roasterId, t.userId] }), index("roaster_members_user_idx").on(t.userId)],
 );
 
 /**
@@ -331,6 +353,12 @@ export const webhookEvents = pgTable(
 
 export const roastersRelations = relations(roasters, ({ many }) => ({
   beans: many(coffeeBeans),
+  members: many(roasterMembers),
+}));
+
+export const roasterMembersRelations = relations(roasterMembers, ({ one }) => ({
+  roaster: one(roasters, { fields: [roasterMembers.roasterId], references: [roasters.id] }),
+  user: one(profiles, { fields: [roasterMembers.userId], references: [profiles.id] }),
 }));
 
 export const coffeeBeansRelations = relations(coffeeBeans, ({ one, many }) => ({

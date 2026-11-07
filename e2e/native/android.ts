@@ -14,6 +14,8 @@ const repo = join(import.meta.dirname, "../..");
 const METRO_PORT = 8197;
 const metroUrl = `exp://127.0.0.1:${METRO_PORT}`;
 const bean = `/bean/${seed.roaster.slug}/${seed.inStock.slug}`;
+/** Coffee pages have the order bar along the bottom; keep scroll targets above it. */
+const aboveOrderBar = { maxY: 2100 };
 
 const children: ChildProcess[] = [];
 function start(cwd: string, args: string[], env: Record<string, string>) {
@@ -45,17 +47,18 @@ const cases: [name: string, run: (d: Device) => Promise<void>][] = [
   [
     "discover: spotlight, collection, new arrivals and roaster rows",
     async (d) => {
-      d.launch("/");
+      await d.launch("/");
       await d.expect(["Roaster spotlight", "01 / 02", seed.secondRoaster.name], 60_000);
       await d.scrollTo("The Collection");
       await d.scrollTo("New arrivals");
-      await d.scrollTo(`${seed.roaster.name} coffees`);
+      // The last roaster's row (North Star has one coffee).
+      await d.scrollTo("1 coffee");
     },
   ],
   [
     "discover: a new arrival opens its coffee",
     async (d) => {
-      d.launch("/");
+      await d.launch("/");
       await d.scrollTo("Kochere Natural");
       await d.tap("Kochere Natural");
       await d.expect(["Ethiopia • Light roast", "Order · £14.00"]);
@@ -64,9 +67,9 @@ const cases: [name: string, run: (d: Device) => Promise<void>][] = [
   [
     "bean: size and quantity update the order total",
     async (d) => {
-      d.launch(bean);
+      await d.launch(bean);
       await d.expect([seed.inStock.name, "from £12.50", "Order · £12.50"]);
-      await d.scrollTo("1kg / Wholebean");
+      await d.scrollTo("1kg / Wholebean", aboveOrderBar);
       await d.tap("1kg / Wholebean");
       await d.expect(["Order · £42.00"]);
       await d.tap("More");
@@ -76,38 +79,40 @@ const cases: [name: string, run: (d: Device) => Promise<void>][] = [
   [
     "bean: brewing guide lists the roaster's pick, then the community",
     async (d) => {
-      d.launch(bean);
-      await d.scrollTo("From the roaster");
+      await d.launch(bean);
+      await d.scrollTo("From the roaster", aboveOrderBar);
       await d.expect(["Roaster's pick", `By ${seed.roaster.name}`]);
-      await d.scrollTo("From the community");
-      await d.scrollTo("Add your recipe");
+      await d.scrollTo("From the community", aboveOrderBar);
+      await d.scrollTo("Add your recipe", aboveOrderBar);
     },
   ],
   [
     "recipe: opens from the guide and the brew timer runs",
     async (d) => {
-      d.launch(bean);
-      await d.scrollTo("By alice");
+      await d.launch(bean);
+      await d.scrollTo("By alice", aboveOrderBar);
       await d.tap("By alice");
       await d.expect(["Recipe by alice", "V60 Pour-Over", "Upvote, 7 upvotes"]);
       await d.scrollTo("Start brewing");
-      await d.tap("Start brewing");
-      await d.expect(["Pause", /^Brew time 0:0[1-9]$/], 10_000);
-      await d.tap("Pause");
-      await d.expect(["Resume", "Reset"]);
+      const button = await d.tap("Start brewing");
+      // uiautomator can't read a screen that updates every second, so let it run, then tap the
+      // same spot (now "Pause") and check the stopped timer.
+      await new Promise((r) => setTimeout(r, 3500));
+      await d.tapAt(button);
+      await d.expect(["Paused", "Resume", "Reset", /^Brew time 0:0[2-9]$/]);
     },
   ],
   [
     "recipe: the roaster's pick credits the roaster",
     async (d) => {
-      d.launch(`/recipe/${seed.inStock.roasterRecipeId}`);
+      await d.launch(`/recipe/${seed.inStock.roasterRecipeId}`);
       await d.expect(["Roaster's pick", `Recommended by ${seed.roaster.name}. Tried it? Upvote it.`, "Upvote, 12 upvotes"]);
     },
   ],
   [
     "upvote: signed out goes to sign in",
     async (d) => {
-      d.launch(`/recipe/${seed.inStock.roasterRecipeId}`);
+      await d.launch(`/recipe/${seed.inStock.roasterRecipeId}`);
       await d.tap("Upvote, 12 upvotes");
       await d.expect(["The Ritual Awaits", "Email address", "Sign in"]);
     },
@@ -115,22 +120,22 @@ const cases: [name: string, run: (d: Device) => Promise<void>][] = [
   [
     "add recipe: signed out is asked to sign in",
     async (d) => {
-      d.launch(`/recipe/new?beanId=${seed.inStock.id}&beanName=${encodeURIComponent(seed.inStock.name)}`);
+      await d.launch(`/recipe/new?beanId=${seed.inStock.id}&beanName=${encodeURIComponent(seed.inStock.name)}`);
       await d.expect(["Share your recipe", "Sign in to add a recipe"]);
     },
   ],
   [
     "sold-out coffee explains itself",
     async (d) => {
-      d.launch(`/bean/${seed.roaster.slug}/${seed.soldOut.slug}`);
+      await d.launch(`/bean/${seed.roaster.slug}/${seed.soldOut.slug}`);
       await d.expect([seed.soldOut.name]);
-      await d.scrollTo("Sold out — reviews and recipes stay here for reference.");
+      await d.scrollTo("Sold out — reviews and recipes stay here for reference.", aboveOrderBar);
     },
   ],
   [
     "shelf: signed out offers sign in",
     async (d) => {
-      d.launch("/shelf");
+      await d.launch("/shelf");
       // react-query retries the 401 a few times first.
       await d.expect(["Sign in to see your shelf"], 30_000);
     },
@@ -138,14 +143,14 @@ const cases: [name: string, run: (d: Device) => Promise<void>][] = [
   [
     "scan screen opens",
     async (d) => {
-      d.launch("/scan");
+      await d.launch("/scan");
       await d.expect(["Scan a bag"]);
     },
   ],
   [
     "unknown recipe says so",
     async (d) => {
-      d.launch("/recipe/00000000-0000-4000-8000-000000000999");
+      await d.launch("/recipe/00000000-0000-4000-8000-000000000999");
       await d.expect(["Recipe not found."], 30_000);
     },
   ],
@@ -165,11 +170,12 @@ async function main() {
 
   // The emulator reaches the API and Metro on the host through these.
   adb("reverse", `tcp:${ports.api}`, `tcp:${ports.api}`);
+  adb("reverse", `tcp:${ports.supabase}`, `tcp:${ports.supabase}`);
   adb("reverse", `tcp:${METRO_PORT}`, `tcp:${METRO_PORT}`);
 
   const device = new Device(metroUrl);
   console.info("Loading the app (first bundle can take a minute)…");
-  device.launch("/");
+  await device.launch("/");
   await device.expect(["Roaster spotlight"], 180_000);
   console.info("Running (please don't touch the emulator)…");
 

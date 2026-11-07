@@ -51,6 +51,11 @@ Schema changes: edit `packages/db/src/schema.ts`, run `pnpm db:generate`, then `
 
 **Rest window.** Shelf entries with a roast date get a push notification when the coffee enters its peak window (`packages/shared/src/resting.ts`).
 
+**Accounts.** Coffee drinkers and roasters sign in with Supabase Auth. Each auth user gets a `profiles` row (from the `handle_new_user` trigger) with an `account_type` of `consumer` or `business`, set from sign-up metadata. A business account can't touch a roaster until it's in `roaster_members`, which only happens through Shopify:
+
+- *Connect your store* (website dashboard): `business.connectShopifyUrl` returns the install URL carrying a signed, 10-minute connect token (`apps/api/src/business/connect-token.ts`). After Shopify's approval, the OAuth callback links the store to that account, as owner if the roaster has none yet, otherwise as staff.
+- *Continue with Shopify* (website `/business`): an OAuth round trip with an online (per-user) token, so Shopify tells us which staff member approved it. If the store has the app installed and Shopify has verified their email, the API finds or creates their account through the auth admin API, adds them to the roaster, and sends them on with a one-time sign-in link.
+
 **Security.** Shopify tokens are encrypted with AES-256-GCM. All data access goes through the API, which connects as `postgres`. RLS is enabled with no policies, so Supabase's auto-generated REST API exposes nothing. Clients authenticate with Supabase JWTs, which the API verifies via JWKS, or with the HS256 secret if one is set.
 
 ## Design
@@ -65,7 +70,17 @@ To look around without any keys or local tooling beyond Docker:
 pnpm demo        # or: docker compose up --build
 ```
 
-This starts the website on http://localhost:3000, the app's web build on http://localhost:8081 and the API on http://localhost:4000, with sample coffees from `e2e/db/seed.sql`. If those ports are in use, set `WEB_PORT`, `MOBILE_PORT` or `API_PORT`. Signing in, Shopify sync and the bag scanner need real credentials, so they won't work here. `docker compose down` discards the data, and the next start reseeds it.
+The sample coffees have photos (from the Stitch designs) in `apps/api/public/mock`, served by the API at `/mock/*`. This starts the website on http://localhost:3000, the app's web build on http://localhost:8081 and the API on http://localhost:4000, with sample coffees from `e2e/db/seed.sql`. If those ports are in use, set `WEB_PORT`, `MOBILE_PORT` or `API_PORT`.
+
+Signing in works for real: compose runs Supabase's auth service (`auth`, GoTrue) behind a small gateway (`gateway`, `supabase/local/gateway.conf`) at http://127.0.0.1:54321, the address the apps use by default. New accounts are confirmed straight away (there's no mail server). Sample accounts, all with the password `password123`:
+
+| Email | Account |
+|---|---|
+| `alice@example.com` | Coffee drinker with a shelf, reviews and recipes |
+| `ben@example.com` | Coffee drinker |
+| `roaster@north-star.test` | Business account, owner of North Star Coffee Roasters |
+
+Shopify sync and the bag scanner need real credentials, so they won't work here. `docker compose down -v` discards the data, and the next start reseeds it. The `migrate` service applies `supabase/migrations` and the seed after the auth service has created its tables, and records what it applied.
 
 ## End-to-end tests
 
@@ -74,7 +89,21 @@ corepack pnpm exec playwright install chromium   # once, from e2e/
 pnpm test:e2e
 ```
 
-`e2e/setup-db.ts` starts a throwaway Postgres in Docker on :54329, loaded with `supabase/migrations` plus `e2e/db/seed.sql` by `e2e/db/docker-init.sh` (shared with `compose.yaml`), then Playwright boots the API (:4100), a production build of the Next site (:3100) and the Expo app on react-native-web (:8181). The tests check content, data flow and the applied design tokens in light and dark mode. Native-only features (camera capture, push) aren't covered.
+`e2e/setup-db.ts` starts the database, auth service and gateway from `compose.yaml` as a separate compose project (`propperbrew-e2e`, database on :54329, auth on :54339) and loads the migrations and seed. Playwright then boots a fake Shopify (`e2e/fake-shopify.ts`, :4199), the API (:4100), a production build of the Next site (:3100) and the Expo app on react-native-web (:8181).
+
+The tests check content, data flow and the applied design tokens in light and dark mode. They also sign in for real: coffee drinkers and roasters on the website, and the app's sign-in form. The Shopify connect and "Continue with Shopify" flows run end to end against the fake Shopify, which signs its redirects like Shopify does. `SHOPIFY_ORIGIN_OVERRIDE` points the API at it, and the API refuses that setting in production. Native-only features (camera capture, push) aren't covered.
+
+### On Android (native)
+
+The browser suite renders the app through react-native-web. To check the real native app as well:
+
+```sh
+# Once: start an Android emulator (Android Studio → Device Manager) and run `expo start --android`
+# in apps/mobile so Expo Go gets installed on it.
+ANDROID_HOME=~/Library/Android/sdk pnpm test:android
+```
+
+`e2e/native/android.ts` seeds the same database, starts the API and a fresh Metro (`--clear`, so the device never runs a stale bundle), then cold-starts the app in Expo Go for each case through deep links. Through adb and uiautomator it reads the screen, scrolls and taps through discovery, ordering, the brewing guide, the recipe timer, the signed-out prompts and error states. A case fails if React Native shows its red error screen or logs a JavaScript error. Don't touch the emulator while it runs.
 
 ## Changes from the original configs
 
@@ -86,6 +115,6 @@ pnpm test:e2e
 ## Not built yet
 
 - **In-app checkout.** Today "Order" opens the roaster's own Shopify checkout with the chosen size and quantity already in the cart (a cart permalink, `packages/shared/src/shopify.ts`), so PropperBrew takes no commission yet. The schema (`orders`, `order_lines`, `roasters.stripe_account_id`, `commission_bps`) is ready for Option 2: Stripe Connect plus Shopify `orderCreate`. The API routes, Stripe webhook and basket UI still need writing.
-- Web auth and the review/recipe forms. The tRPC mutations exist; only the UI is missing.
+- The review and recipe forms on the website (the app has the recipe form). The business dashboard shows connection status and coffees; managing them (recommended recipes, roaster profile) comes next.
 - Recommendations: `pgvector` is enabled, but nothing uses embeddings yet.
 - Roaster-editable profile (city, roast days, shipping) on the `/shopify/app` page.

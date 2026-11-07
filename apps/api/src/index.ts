@@ -1,4 +1,5 @@
 import { serve } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
 import { trpcServer } from "@hono/trpc-server";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -21,6 +22,12 @@ app.get("/health", async (c) => {
   await db.execute(sql`select 1`);
   return c.json({ ok: true });
 });
+
+// Sample coffee photos used by the seed data (e2e/db/seed.sql), served from apps/api/public.
+app.use(
+  "/mock/*",
+  serveStatic({ root: "./public", onFound: (_path, c) => c.header("Cache-Control", "public, max-age=86400") }),
+);
 
 app.route("/", shopifyRoutes);
 
