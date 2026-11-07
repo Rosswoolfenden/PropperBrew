@@ -3,7 +3,7 @@
  * data flow; native-only behaviour (camera capture, push) is out of reach here.
  */
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
-import { accessToken, accounts, apiUrl, rgb, seed } from "../fixtures";
+import { accessToken, accounts, apiUrl, clearReviews, rgb, seed } from "../fixtures";
 
 const beanPath = `/bean/${seed.roaster.slug}/${seed.inStock.slug}`;
 /** The in-screen headline; the native-stack header renders the same title as a level-1 heading. */
@@ -163,7 +163,8 @@ test.describe("bean", () => {
     await expect(page.getByText("Colombia • Light roast", { exact: true })).toBeVisible();
     await expect(page.getByText("from £12.50", { exact: true })).toBeVisible();
     for (const note of seed.inStock.tastingNotes) {
-      const chip = page.getByText(note, { exact: true });
+      // First match: the coffee's own notes (reviews further down can repeat them).
+      const chip = page.getByText(note, { exact: true }).first();
       await expect(chip).toBeVisible();
       expect(await style(chip.locator(".."), "background-color")).toBe(rgb.secondaryContainer);
     }
@@ -471,6 +472,77 @@ test.describe("add your recipe", () => {
     await expect(
       page.getByRole("region", { name: "From the community" }).getByRole("link", { name: "Chemex recipe by alice" }),
     ).toBeVisible();
+  });
+});
+
+test.describe("reviews", () => {
+  const cerradoPath = `/bean/${seed.cerrado.roasterSlug}/${seed.cerrado.slug}`;
+  test.afterAll(() => clearReviews(seed.cerrado.id));
+
+  test("the coffee page shows the sensory profile and asks for a review", async ({ page }) => {
+    await page.goto(beanPath);
+    const reviews = page.getByRole("region", { name: "Reviews" });
+    await reviews.getByText("Sensory profile").scrollIntoViewIfNeeded();
+    await expect(reviews.getByLabel("Acidity 4.5 of 5")).toBeVisible();
+    await expect(reviews.getByText("Bright & citric")).toBeVisible();
+    await expect(reviews.getByText("Bright and juicy, with a long floral finish.")).toBeVisible();
+
+    // Signed out, writing a review asks you to sign in.
+    await reviews.getByRole("button", { name: "Write a review" }).click();
+    await expect(page.getByRole("button", { name: "Sign in to review" })).toBeVisible();
+  });
+
+  test("from the shelf's prompt to a posted review", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/shelf");
+    // Only Cerrado (at its peak, not yet reviewed) gets the prompt.
+    const prompts = page.getByRole("link", { name: /^How was .*\? Review it$/ });
+    await expect(prompts).toHaveCount(1);
+    await expect(prompts).toHaveAccessibleName(`How was ${seed.cerrado.name}? Review it`);
+    await prompts.click();
+    await expect(page).toHaveURL(`/review/${seed.cerrado.roasterSlug}/${seed.cerrado.slug}`);
+    await expect(screenHeading(page, seed.cerrado.name)).toBeVisible();
+
+    await page.getByRole("button", { name: "Post review" }).click();
+    await expect(page.getByRole("alert")).toHaveText("Choose a star rating.");
+
+    await page.getByRole("radio", { name: "4 stars" }).click();
+    await page.getByRole("radio", { name: "Acidity 2 of 5, Gentle" }).click();
+    await page.getByRole("radio", { name: "Body 5 of 5, Syrupy" }).click();
+    await expect(page.getByText("Syrupy", { exact: true })).toBeVisible();
+    await page.getByRole("checkbox", { name: "Hazelnut" }).click();
+    await page.getByLabel("Add a note").fill("Caramel");
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await expect(page.getByRole("checkbox", { name: "Caramel" })).toHaveAttribute("aria-checked", "true");
+    await page.getByLabel("Your notes").fill("Nutty and sweet, great in a flat white.");
+    await page.getByRole("button", { name: "Post review" }).click();
+    // Posting closes the review and returns to where you came from (and the request has finished).
+    await expect(page).toHaveURL("/shelf");
+
+    // On the coffee: the new rating, sensory profile and review.
+    await page.goto(cerradoPath);
+    const reviews = page.getByRole("region", { name: "Reviews" });
+    await reviews.getByText("Nutty and sweet, great in a flat white.").scrollIntoViewIfNeeded();
+    await expect(reviews.getByText("4.0 (1 review)")).toBeVisible();
+    await expect(reviews.getByLabel("Acidity 2 of 5")).toBeVisible();
+    await expect(reviews.getByLabel("Body 5 of 5")).toBeVisible();
+    await expect(reviews.getByText("alice", { exact: true })).toBeVisible();
+    await expect(reviews.getByRole("button", { name: "Edit your review" })).toBeVisible();
+
+    // And the shelf stops asking.
+    await page.goto("/shelf");
+    await expect(page.getByText(seed.cerrado.name)).toBeVisible();
+    await expect(page.getByRole("link", { name: /^How was .*\? Review it$/ })).toHaveCount(0);
+  });
+
+  test("editing opens your review as you left it", async ({ page }) => {
+    await signIn(page);
+    await page.goto(`/review/${seed.roaster.slug}/${seed.inStock.slug}`);
+    await expect(page.getByRole("radio", { name: "5 stars" })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByRole("radio", { name: "Acidity 5 of 5, Bright & citric" })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByRole("checkbox", { name: "Rhubarb" })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByLabel("Your notes")).toHaveValue("Bright and juicy, with a long floral finish.");
+    await expect(page.getByRole("button", { name: "Update review" })).toBeVisible();
   });
 });
 

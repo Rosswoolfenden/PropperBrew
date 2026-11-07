@@ -76,6 +76,9 @@ export const seed = {
     variants: { small: "2001", large: "2002" },
   },
   soldOut: { slug: "kiambu-ab", name: "Kiambu AB" },
+  /** Hackney Heights' coffees: no reviews yet. Alice has Cerrado on her shelf, at its peak. */
+  kochere: { id: "00000000-0000-4000-8000-000000000211", slug: "kochere", name: "Kochere Natural", roasterSlug: "hackney-heights" },
+  cerrado: { id: "00000000-0000-4000-8000-000000000212", slug: "cerrado", name: "Cerrado Pulped Natural", roasterSlug: "hackney-heights" },
 } as const;
 
 /** Design tokens from @propperbrew/shared, as the computed-style strings browsers report. */
@@ -108,3 +111,9 @@ export function sql(query: string): string {
 
 /** Shopify stores in db/seed.sql. Anything else was connected by a test. */
 export const seededShopDomains = ["north-star-coffee.myshopify.com", "hackney-heights.myshopify.com", "gone-quiet.myshopify.com"];
+
+/** Remove a coffee's reviews (from tests) and reset its rating and sensory averages. */
+export function clearReviews(coffeeBeanId: string) {
+  sql(`delete from reviews where coffee_bean_id = '${coffeeBeanId}';
+       update coffee_beans set avg_rating = null, review_count = 0, avg_flavour_scores = null where id = '${coffeeBeanId}'`);
+}

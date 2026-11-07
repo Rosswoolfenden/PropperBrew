@@ -244,3 +244,44 @@ button.button:disabled { opacity: 0.6; cursor: default; }
 .status-archived { background: var(--surface-container-highest); color: var(--on-surface-variant); }
 @media (max-width: 560px) { .coffee-line { grid-template-columns: 48px 1fr auto; } .coffee-line-price { display: none; } }
 .connect-form { display: grid; gap: 16px; }
+
+/* Reviews: sensory profile and the review form */
+.button-secondary { background: var(--surface-container-high); color: var(--primary); }
+.button-secondary:hover { background: var(--surface-container-highest); }
+.review-cta { display: grid; gap: 16px; justify-items: start; margin-bottom: 32px; }
+.review-cta .button { width: auto; padding: 0 28px; }
+.sensory-profile { margin-bottom: 32px; gap: 16px; }
+.sensory-bar { display: grid; gap: 6px; }
+.sensory-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.sensory-label { font: 700 11px var(--font-headline); text-transform: uppercase; letter-spacing: 0.1rem; color: var(--primary); padding: 0; }
+.bar { height: 4px; border-radius: 2px; background: var(--surface-container-highest); overflow: hidden; }
+.bar span { display: block; height: 100%; background: var(--primary); }
+
+.review-form { margin-bottom: 40px; gap: 32px; }
+.review-form fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.stars-input { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 20px !important; border-radius: 12px; background: var(--surface-container-lowest); }
+.stars-input legend { float: left; width: 100%; text-align: left; margin-bottom: 8px; }
+.stars-input label { cursor: pointer; font-size: 40px; line-height: 1; color: var(--outline-variant); }
+.stars-input label.on { color: var(--primary); }
+.stars-input input, .sensory-track input, .note-chip input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.stars-input label:has(input:focus-visible), .sensory-track label:has(input:focus-visible), .note-chip:has(input:focus-visible) { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 6px; }
+.sensory-inputs { display: grid; gap: 28px; }
+.sensory-inputs h3 { font-size: 1.5rem; font-weight: 800; }
+.sensory-input { display: grid; gap: 10px; }
+.sensory-input > legend { width: 100%; padding: 0; margin-bottom: 10px; }
+.sensory-track { position: relative; display: flex; justify-content: space-between; align-items: center; height: 36px; }
+.sensory-track::before { content: ""; position: absolute; left: 18px; right: 18px; height: 2px; border-radius: 1px; background: var(--surface-container-highest); }
+.sensory-track label { position: relative; width: 36px; height: 36px; display: grid; place-items: center; cursor: pointer; }
+.sensory-track label::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--outline-variant); }
+.sensory-track label.on::after { width: 22px; height: 22px; background: var(--primary); }
+.sensory-ends { display: flex; justify-content: space-between; font: 500 9px var(--font-headline); text-transform: uppercase; letter-spacing: 0.08rem; color: var(--outline); }
+.notes-input { display: grid; gap: 16px; }
+.note-chip { position: relative; cursor: pointer; padding: 8px 14px; border-radius: 12px; border: 1px dashed color-mix(in srgb, var(--outline-variant) 70%, transparent); font: 500 12px var(--font-headline); text-transform: uppercase; letter-spacing: 0.05em; color: var(--on-surface-variant); }
+.note-chip.on { border-color: transparent; background: var(--secondary-container); color: var(--on-secondary-container); }
+.add-note { display: flex; align-items: flex-end; gap: 12px; }
+.add-note .field { flex: 1; }
+.add-note .button { width: auto; flex: none; height: 56px; padding: 0 24px; }
+.field textarea { font: 1.05rem/1.5 var(--font-body); color: var(--on-surface); background: var(--surface-container-highest); border: 0; border-bottom: 2px solid transparent; border-radius: 6px; padding: 16px; outline: none; resize: vertical; }
+.field textarea:focus { border-bottom-color: var(--primary); }
+.review-actions { display: flex; align-items: center; gap: 16px; }
+.review-actions .button { flex: 1; }

@@ -118,6 +118,17 @@ const cases: [name: string, run: (d: Device) => Promise<void>][] = [
     },
   ],
   [
+    "reviews: sensory profile, and signed-out reviewers are asked to sign in",
+    async (d) => {
+      await d.launch(bean);
+      await d.scrollTo("Sensory profile", aboveOrderBar);
+      await d.expect(["Acidity 4.5 of 5, Bright & citric"]);
+      await d.scrollTo("Write a review", aboveOrderBar);
+      await d.tap("Write a review");
+      await d.expect(["Sign in to review"]);
+    },
+  ],
+  [
     "add recipe: signed out is asked to sign in",
     async (d) => {
       await d.launch(`/recipe/new?beanId=${seed.inStock.id}&beanName=${encodeURIComponent(seed.inStock.name)}`);

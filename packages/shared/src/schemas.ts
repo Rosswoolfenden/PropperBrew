@@ -8,11 +8,17 @@ export const Rating = z
   .max(5)
   .refine((n) => Math.abs(n * 10 - Math.round(n * 10)) < 1e-6, { message: "Rating must be in 0.1 increments" });
 
+/** The review's sensory profile (Stitch "Review Coffee"): each scored 1–5, each optional. */
+export const SENSORY_DIMENSIONS = ["acidity", "sweetness", "body", "aftertaste", "balance"] as const;
+export type SensoryDimension = (typeof SENSORY_DIMENSIONS)[number];
+
+const SensoryScore = z.number().int().min(1).max(5);
 export const FlavourScores = z.object({
-  acidity: z.number().int().min(0).max(5),
-  sweetness: z.number().int().min(0).max(5),
-  body: z.number().int().min(0).max(5),
-  bitterness: z.number().int().min(0).max(5),
+  acidity: SensoryScore.optional(),
+  sweetness: SensoryScore.optional(),
+  body: SensoryScore.optional(),
+  aftertaste: SensoryScore.optional(),
+  balance: SensoryScore.optional(),
 });
 export type FlavourScores = z.infer<typeof FlavourScores>;
 

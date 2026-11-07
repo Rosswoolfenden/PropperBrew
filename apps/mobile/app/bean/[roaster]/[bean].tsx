@@ -7,7 +7,9 @@ import { ORDER_BAR_HEIGHT, OrderBar, SizeOptions } from "@/order";
 import { RecipeCard } from "@/recipe-card";
 import { fonts, themed } from "@/theme";
 import { useTRPC } from "@/trpc";
-import { Body, Button, Chip, Eyebrow, FilterChip, Frame, GUTTER, Headline, Loading, Rating } from "@/ui";
+import { SensoryProfile } from "@/sensory-profile";
+import { useSession } from "@/session";
+import { Body, Button, Chip, Eyebrow, FilterChip, Frame, GUTTER, Headline, Loading, Rating, Stars } from "@/ui";
 
 const METHOD_FILTERS: { label: string; value?: BrewMethod }[] = [
   { label: "All" },
@@ -28,6 +30,15 @@ export default function BeanScreen() {
   const recipes = useQuery({
     ...trpc.recipes.forBean.queryOptions({ coffeeBeanId: bean.data?.id ?? "", brewMethod: method, limit: 10 }),
     enabled: !!bean.data,
+  });
+  const reviews = useQuery({
+    ...trpc.reviews.forBean.queryOptions({ coffeeBeanId: bean.data?.id ?? "", limit: 20 }),
+    enabled: !!bean.data,
+  });
+  const { session } = useSession();
+  const mine = useQuery({
+    ...trpc.reviews.mine.queryOptions({ coffeeBeanId: bean.data?.id ?? "" }),
+    enabled: !!bean.data && !!session,
   });
   const addToShelf = useMutation(
     trpc.shelf.add.mutationOptions({ onSuccess: () => Alert.alert("Added to your shelf") }),
@@ -144,6 +155,42 @@ export default function BeanScreen() {
             <Button label="Add your recipe" icon="add" variant="secondary" />
           </Link>
         </View>
+
+        <View role="region" aria-label="Reviews" style={styles.block}>
+          <Headline size="section">Reviews</Headline>
+          {b.avgRating !== null ? (
+            <Rating value={b.avgRating} count={b.reviewCount} />
+          ) : (
+            <Body italic muted>
+              No reviews yet. Be the first to say how it tasted.
+            </Body>
+          )}
+          {b.avgFlavourScores && Object.keys(b.avgFlavourScores).length > 0 && (
+            <View style={styles.sensory}>
+              <Eyebrow>Sensory profile</Eyebrow>
+              <SensoryProfile scores={b.avgFlavourScores} />
+            </View>
+          )}
+          <Link href={{ pathname: "/review/[roaster]/[bean]", params: { roaster: b.roaster.slug, bean: b.slug } }} asChild>
+            <Button label={mine.data ? "Edit your review" : "Write a review"} icon="rate-review" variant="secondary" />
+          </Link>
+          {reviews.data?.map((r) => (
+            <View key={r.id} style={styles.review}>
+              <View style={styles.reviewHead}>
+                <Eyebrow style={styles.reviewAuthor}>{r.user.username}</Eyebrow>
+                <Stars value={r.rating} />
+              </View>
+              {r.tastingNotes.length > 0 && (
+                <View style={styles.wrap}>
+                  {r.tastingNotes.map((n) => (
+                    <Chip key={n} small pill label={n} />
+                  ))}
+                </View>
+              )}
+              {r.body && <Body muted>{r.body}</Body>}
+            </View>
+          ))}
+        </View>
       </ScrollView>
       {checkout && (
         <OrderBar
@@ -171,5 +218,9 @@ const useStyles = themed((c) =>
     specValue: { flex: 1, paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: `${c.outlineVariant}33`, fontFamily: fonts.body, fontSize: 18, color: c.primary },
     note: { padding: 20, borderRadius: radius.xl, backgroundColor: c.surfaceContainerLow, overflow: "hidden" },
     recipeGroup: { gap: 16, marginTop: 8 },
+    sensory: { gap: 16, padding: 24, borderRadius: radius.xl, backgroundColor: c.surfaceContainerLow },
+    review: { gap: 10, paddingTop: 8 },
+    reviewHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+    reviewAuthor: { fontFamily: fonts.labelBold, color: c.secondary },
   }),
 );

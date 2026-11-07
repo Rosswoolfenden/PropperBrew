@@ -1,6 +1,6 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
-import { shelfEntries } from "@propperbrew/db";
+import { reviews, shelfEntries } from "@propperbrew/db";
 import { ShelfEntryInput, restState, restWindowDays } from "@propperbrew/shared";
 import { protectedProcedure, router } from "../init";
 
@@ -9,11 +9,29 @@ export const shelfRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     const entries = await ctx.db.query.shelfEntries.findMany({
       where: and(eq(shelfEntries.userId, ctx.user.id), isNull(shelfEntries.finishedAt)),
-      with: { bean: { columns: { id: true, name: true, slug: true, imageUrl: true, roastLevel: true } } },
+      with: {
+        bean: {
+          columns: { id: true, name: true, slug: true, imageUrl: true, roastLevel: true },
+          with: { roaster: { columns: { slug: true, name: true } } },
+        },
+      },
       orderBy: desc(shelfEntries.createdAt),
     });
+    // Which of these coffees they've already reviewed, so the shelf only asks "How was it?" once.
+    const beanIds = [...new Set(entries.map((e) => e.coffeeBeanId))];
+    const reviewed = new Set(
+      beanIds.length
+        ? (
+            await ctx.db
+              .select({ id: reviews.coffeeBeanId })
+              .from(reviews)
+              .where(and(eq(reviews.userId, ctx.user.id), inArray(reviews.coffeeBeanId, beanIds)))
+          ).map((r) => r.id)
+        : [],
+    );
     return entries.map((e) => ({
       ...e,
+      reviewed: reviewed.has(e.coffeeBeanId),
       rest: e.roastDate ? restState(e.roastDate, restWindowDays({ roastLevel: e.bean.roastLevel })) : null,
     }));
   }),

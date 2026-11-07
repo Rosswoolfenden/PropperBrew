@@ -59,6 +59,14 @@ export default function RootLayout() {
         <Stack.Screen name="bean/[roaster]/[bean]" options={{ title: BRAND }} />
         <Stack.Screen name="recipe/[id]" options={{ title: BRAND }} />
         <Stack.Screen
+          name="review/[roaster]/[bean]"
+          options={{
+            title: BRAND,
+            presentation: "modal",
+            headerLeft: () => <HeaderIcon icon="close" label="Close" onPress={() => router.back()} />,
+          }}
+        />
+        <Stack.Screen
           name="recipe/new"
           options={{
             title: BRAND,

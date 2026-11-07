@@ -83,11 +83,17 @@ values
   ('00000000-0000-4000-8000-000000000312', '00000000-0000-4000-8000-000000000212', '3002', '250g / Wholebean', 250, 950, true),
   ('00000000-0000-4000-8000-000000000321', '00000000-0000-4000-8000-000000000221', '4001', '250g / Wholebean', 250, 1000, false);
 
-insert into public.reviews (user_id, coffee_bean_id, rating, tasting_notes, body, created_at) values
+insert into public.reviews (user_id, coffee_bean_id, rating, tasting_notes, body, flavour_scores, created_at) values
   ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-000000000201', 50,
-   '{Rhubarb,Cherry}', 'Bright and juicy, with a long floral finish.', now()),
+   '{Rhubarb,Cherry}', 'Bright and juicy, with a long floral finish.',
+   '{"acidity":5,"sweetness":4,"body":2,"aftertaste":4,"balance":4}', now()),
   ('00000000-0000-4000-8000-00000000000b', '00000000-0000-4000-8000-000000000201', 40,
-   '{}', null, now() - interval '1 hour');
+   '{}', null, '{"acidity":4,"body":3}', now() - interval '1 hour');
+
+-- The averages the API keeps up to date when reviews are posted (reviews.ts refreshBeanAggregates).
+update public.coffee_beans
+set avg_flavour_scores = '{"acidity":4.5,"sweetness":4.0,"body":2.5,"aftertaste":4.0,"balance":4.0}'
+where id = '00000000-0000-4000-8000-000000000201';
 
 -- Mock recipes with full step-by-step guides (shown on the recipe screen).
 insert into public.brew_recipes
@@ -157,6 +163,10 @@ values
    'Our house espresso. Great with milk.',
    '[{"time":0,"water":42,"title":"Pull","note":"19g in, 42g out, around 30 seconds."}]');
 
+-- Alice's shelf. She's reviewed El Diviso already; Cerrado is at its peak and unreviewed (so the
+-- shelf asks "How was it?"); Kochere is still resting; Kiambu has no roast date.
 insert into public.shelf_entries (user_id, coffee_bean_id, roast_date, created_at) values
   ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-000000000201', current_date - 10, now()),
-  ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-000000000202', null, now() - interval '1 minute');
+  ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-000000000202', null, now() - interval '1 minute'),
+  ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-000000000212', current_date - 12, now() - interval '2 minutes'),
+  ('00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-000000000211', current_date - 3, now() - interval '3 minutes');

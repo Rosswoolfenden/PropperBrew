@@ -1,7 +1,7 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { coffeeBeans, profiles, reviews, type Db } from "@propperbrew/db";
-import { CreateReviewInput, ratingFromDb, ratingToDb } from "@propperbrew/shared";
+import { CreateReviewInput, ratingFromDb, ratingToDb, SENSORY_DIMENSIONS } from "@propperbrew/shared";
 import { protectedProcedure, publicProcedure, router } from "../init";
 
 /** Recompute the bean's rolling aggregates. Cheap at our scale; move to a trigger if it isn't. */
@@ -11,13 +11,11 @@ async function refreshBeanAggregates(db: Db, coffeeBeanId: string) {
     .set({
       avgRating: sql`(select round(avg(${reviews.rating}))::int from ${reviews} where ${reviews.coffeeBeanId} = ${coffeeBeanId})`,
       reviewCount: sql`(select count(*)::int from ${reviews} where ${reviews.coffeeBeanId} = ${coffeeBeanId})`,
+      // Average of each dimension over the reviews that scored it (one decimal), or null if none did.
       avgFlavourScores: sql`(
-        select case when count(${reviews.flavourScores}) = 0 then null else jsonb_build_object(
-          'acidity', round(avg((${reviews.flavourScores}->>'acidity')::numeric)),
-          'sweetness', round(avg((${reviews.flavourScores}->>'sweetness')::numeric)),
-          'body', round(avg((${reviews.flavourScores}->>'body')::numeric)),
-          'bitterness', round(avg((${reviews.flavourScores}->>'bitterness')::numeric))
-        ) end
+        select nullif(jsonb_strip_nulls(jsonb_build_object(${sql.raw(
+          SENSORY_DIMENSIONS.map((d) => `'${d}', round(avg((flavour_scores->>'${d}')::numeric), 1)`).join(", "),
+        )})), '{}'::jsonb)
         from ${reviews} where ${reviews.coffeeBeanId} = ${coffeeBeanId}
       )`,
     })
@@ -47,6 +45,14 @@ export const reviewsRouter = router({
       return rows.map((r) => ({ ...r, rating: ratingFromDb(r.rating) }));
     }),
 
+  /** Your review of a coffee (to edit it), or null. */
+  mine: protectedProcedure.input(z.object({ coffeeBeanId: z.uuid() })).query(async ({ ctx, input }) => {
+    const review = await ctx.db.query.reviews.findFirst({
+      where: and(eq(reviews.userId, ctx.user.id), eq(reviews.coffeeBeanId, input.coffeeBeanId)),
+    });
+    return review ? { ...review, rating: ratingFromDb(review.rating) } : null;
+  }),
+
   /** One review per user per bean; re-submitting edits it. */
   upsert: protectedProcedure.input(CreateReviewInput).mutation(async ({ ctx, input }) => {
     const values = {
@@ -55,7 +61,8 @@ export const reviewsRouter = router({
       rating: ratingToDb(input.rating),
       tastingNotes: input.tastingNotes,
       body: input.body,
-      flavourScores: input.flavourScores,
+      // Nothing scored is "no sensory profile", not an empty one.
+      flavourScores: input.flavourScores && Object.values(input.flavourScores).some((v) => v !== undefined) ? input.flavourScores : null,
       photoUrl: input.photoUrl,
       brewMethod: input.brewMethod,
     };

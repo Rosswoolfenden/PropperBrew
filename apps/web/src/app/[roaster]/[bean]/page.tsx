@@ -1,9 +1,19 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { TRPCClientError } from "@trpc/client";
-import { BREW_METHOD_LABELS, brewRatio, formatAltitude, formatPriceFrom, humanize } from "@propperbrew/shared";
+import {
+  BREW_METHOD_LABELS,
+  brewRatio,
+  formatAltitude,
+  formatPriceFrom,
+  humanize,
+  SENSORY,
+  SENSORY_DIMENSIONS,
+  sensoryLevel,
+} from "@propperbrew/shared";
 import { OrderForm } from "@/components/order-form";
 import { Rating, Stars } from "@/components/rating";
+import { ReviewComposer } from "@/components/review-composer";
 import { api } from "@/lib/trpc";
 
 export const revalidate = 300;
@@ -161,9 +171,29 @@ export default async function BeanPage({ params }: { params: Params }) {
           ))}
       </section>
 
-      <section className="section">
+      <section className="section" aria-label="Reviews">
         <h2>Reviews</h2>
-        {reviews.length === 0 && <p className="muted">No reviews yet.</p>}
+        {reviews.length === 0 && <p className="muted">No reviews yet. Be the first to say how it tasted.</p>}
+        {bean.avgFlavourScores && Object.keys(bean.avgFlavourScores).length > 0 && (
+          <div className="sensory-profile card" aria-label="Sensory profile">
+            <span className="eyebrow">Sensory profile</span>
+            {SENSORY_DIMENSIONS.filter((d) => bean.avgFlavourScores?.[d] !== undefined).map((d) => {
+              const score = bean.avgFlavourScores![d]!;
+              return (
+                <div key={d} className="sensory-bar" aria-label={`${SENSORY[d].label} ${score} of 5`}>
+                  <div className="sensory-head">
+                    <span className="sensory-label">{SENSORY[d].label}</span>
+                    <span className="muted italic">{sensoryLevel(d, score)}</span>
+                  </div>
+                  <div className="bar">
+                    <span style={{ width: `${(score / 5) * 100}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <ReviewComposer coffeeBeanId={bean.id} roasterSlug={bean.roaster.slug} beanSlug={bean.slug} suggestedNotes={bean.tastingNotes} />
         <div className="stack">
           {reviews.map((r) => (
             <div key={r.id} className="review">

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "expo-router";
-import { FlatList, StyleSheet, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { radius } from "@propperbrew/shared";
 import { fonts, themed } from "@/theme";
 import { useTRPC } from "@/trpc";
@@ -46,6 +46,17 @@ export default function ShelfScreen() {
                 Add a roast date to track resting
               </Body>
             )}
+            {/* Once it's ready to drink, ask how it was (until they've said). */}
+            {item.rest && item.rest.state !== "resting" && !item.reviewed && (
+              <Link
+                href={{ pathname: "/review/[roaster]/[bean]", params: { roaster: item.bean.roaster.slug, bean: item.bean.slug } }}
+                asChild
+              >
+                <Pressable role="link" aria-label={`How was ${item.bean.name}? Review it`} style={styles.prompt}>
+                  <Text style={styles.promptText}>How was it? Review →</Text>
+                </Pressable>
+              </Link>
+            )}
           </View>
         </View>
       )}
@@ -61,5 +72,7 @@ const useStyles = themed((c) =>
     thumb: { width: 72 },
     body: { flex: 1, gap: 4 },
     state: { fontFamily: fonts.labelBold, color: c.secondary },
+    prompt: { alignSelf: "flex-start", marginTop: 6, paddingVertical: 6, paddingHorizontal: 12, borderRadius: radius.md, backgroundColor: c.secondaryContainer },
+    promptText: { fontFamily: fonts.labelBold, fontSize: 11, letterSpacing: 1, textTransform: "uppercase", color: c.onSecondaryContainer },
   }),
 );
