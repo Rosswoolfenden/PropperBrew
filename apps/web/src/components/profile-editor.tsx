@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState, type FormEvent } from "react";
 import { BREW_METHOD_LABELS, BREW_METHODS, UserProfileInput, type BrewMethod } from "@propperbrew/shared";
@@ -38,6 +39,9 @@ export function ProfileEditor({ username }: { username: string }) {
         <button type="button" className="button button-secondary button-sm" onClick={() => setOpen(true)}>
           Edit profile
         </button>
+        <Link href="/orders" className="button button-secondary button-sm">
+          Your orders
+        </Link>
       </div>
     );
   }

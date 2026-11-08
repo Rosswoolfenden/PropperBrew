@@ -6,7 +6,7 @@
  */
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
-import { apiUrl, jwtSecret, ports } from "./fixtures";
+import { apiUrl, encryptToken, jwtSecret, ports, seed, sql } from "./fixtures";
 
 const repo = join(import.meta.dirname, "..");
 const compose = (...args: string[]) =>
@@ -27,4 +27,7 @@ const compose = (...args: string[]) =>
 compose("down", "--volumes", "--remove-orphans");
 compose("up", "--detach", "--wait", "db", "auth", "gateway");
 compose("run", "--rm", "migrate");
+// The roaster that takes payment here needs a Shopify token, so paid orders can be created in its
+// (fake) store. Encrypted with the test key, which seed.sql can't do.
+sql(`update roasters set shopify_access_token_enc = '${encryptToken("shpat_e2e_hackney")}' where id = '${seed.payingRoaster.id}'`);
 console.info(`e2e database ready on :${ports.db}, auth on :${ports.supabase} (seed images from ${apiUrl})`);

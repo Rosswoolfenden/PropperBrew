@@ -64,6 +64,14 @@ Schema changes: edit `packages/db/src/schema.ts`, run `pnpm db:generate`, then `
 
 **Roaster tools.** In the business dashboard, a roaster's team can edit the roaster's public page: philosophy, story, city, year established, address, website, and a hero photo picked from their own coffee photos (the API refuses any other image). They can post recipes as their own recommendations ("Roaster's pick", shown first on that coffee's brewing guide) and remove them, and see recent reviews and community recipes on their coffees. Only members of a roaster can change it. The public page is `/<roaster>` on the website and the roaster screen in the app, following the Stitch Roaster Profile design. Discover links to it, and pages are rebuilt as soon as anything changes.
 
+**In-app checkout (Option 2).** Roasters that have set up Stripe payouts sell through a PropperBrew basket, following the Stitch Cart, Checkout and Order Confirmation designs. Everyone else still gets "Order", which opens their own Shopify checkout.
+
+- *Basket.* `basket_items` is kept on the server, so it's the same in the app and on the website, and it can hold coffees from several roasters. `basket.get` reprices it every time. It groups coffees by roaster, because each roaster posts its own parcel and charges its own delivery: `roasters.shipping_flat_pence` (default £3.95), free from `free_shipping_threshold_pence`. Roasters set both in the dashboard. A coffee that sells out while it's in a basket is flagged, and checkout waits until it's removed.
+- *Paying.* `orders.start` writes a `checkouts` row, plus an `orders` row per roaster with its lines (prices read again on the server), and opens a Stripe Checkout Session. The shopper pays on Stripe's page by card, Apple Pay or Google Pay. On the website they come back to `/orders/<id>`. In the app, the page opens in the in-app browser, and the app's order screen checks for the payment until it's confirmed.
+- *After payment.* The `checkout.session.completed` webhook (signature-checked) marks the checkout paid and takes the coffees out of the basket. Each roaster is then paid through a Stripe transfer (separate charges and transfers): coffee plus delivery, less `commission_bps` of the coffee (12% by default). Next, the order is created in the roaster's Shopify store with `orderCreate`, already paid, so they post it like any other order. A late webhook doesn't matter, because the order page asks Stripe directly. If Stripe or Shopify fails, the order stays `paid` with `last_error`, and a sweeper retries every minute, up to 5 times. Transfers use idempotency keys, so a retry never pays twice. Unpaid sessions are marked expired.
+- *Roasters.* The dashboard's "Selling on PropperBrew" card starts Stripe Connect Express onboarding (owners only), sets delivery charges, and lists orders placed here with what the roaster receives.
+- *Configuration.* Without `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`, checkout is off everywhere. With Stripe test keys it runs in test mode (card 4242 4242 4242 4242). Shopify needs the `write_orders` scope for `orderCreate`.
+
 **Security.** Shopify tokens are encrypted with AES-256-GCM. All data access goes through the API, which connects as `postgres`. RLS is enabled with no policies, so Supabase's auto-generated REST API exposes nothing. Clients authenticate with Supabase JWTs, which the API verifies via JWKS, or with the HS256 secret if one is set.
 
 ## Design
@@ -88,7 +96,7 @@ Signing in works for real: compose runs Supabase's auth service (`auth`, GoTrue)
 | `ben@example.com` | Coffee drinker |
 | `roaster@north-star.test` | Business account, owner of North Star Coffee Roasters |
 
-Shopify sync and the bag scanner need real credentials, so they won't work here. `docker compose down -v` discards the data, and the next start reseeds it. The `migrate` service applies `supabase/migrations` and the seed after the auth service has created its tables, and records what it applied.
+Shopify sync and the bag scanner need real credentials, so they won't work here. In-app checkout is off too, so every "Order" button goes to the roaster's Shopify store. To try it, start the preview with Stripe test keys, `STRIPE_SECRET_KEY=sk_test_… STRIPE_WEBHOOK_SECRET=whsec_… pnpm demo`. Hackney Heights' sample Stripe account isn't real, so set up payouts for North Star from its dashboard instead. Paying works without forwarding webhooks, but creating orders in Shopify needs a real store. `docker compose down -v` discards the data, and the next start reseeds it. The `migrate` service applies `supabase/migrations` and the seed after the auth service has created its tables, and records what it applied.
 
 ## End-to-end tests
 
@@ -97,9 +105,9 @@ corepack pnpm exec playwright install chromium   # once, from e2e/
 pnpm test:e2e
 ```
 
-`e2e/setup-db.ts` starts the database, auth service and gateway from `compose.yaml` as a separate compose project (`propperbrew-e2e`, database on :54329, auth on :54339) and loads the migrations and seed. Playwright then boots a fake Shopify (`e2e/fake-shopify.ts`, :4199), the API (:4100), a production build of the Next site (:3100) and the Expo app on react-native-web (:8181).
+`e2e/setup-db.ts` starts the database, auth service and gateway from `compose.yaml` as a separate compose project (`propperbrew-e2e`, database on :54329, auth on :54339) and loads the migrations and seed. Playwright then boots a fake Shopify (`e2e/fake-shopify.ts`, :4199), a fake Stripe (`e2e/fake-stripe.ts`, :4198), the API (:4100), a production build of the Next site (:3100) and the Expo app on react-native-web (:8181).
 
-The tests check content, data flow and the applied design tokens in light and dark mode. They also sign in for real: coffee drinkers and roasters on the website, and the app's sign-in form. The Shopify connect and "Continue with Shopify" flows run end to end against the fake Shopify, which signs its redirects like Shopify does. `SHOPIFY_ORIGIN_OVERRIDE` points the API at it, and the API refuses that setting in production. Native-only features (camera capture, push) aren't covered.
+The tests check content, data flow and the applied design tokens in light and dark mode. They also sign in for real: coffee drinkers and roasters on the website, and the app's sign-in form. The Shopify connect and "Continue with Shopify" flows run end to end against the fake Shopify, which signs its redirects like Shopify does. `SHOPIFY_ORIGIN_OVERRIDE` points the API at it, and the API refuses that setting in production. Checkout runs end to end against the fake Stripe the same way (`STRIPE_API_BASE`, also refused in production). Its payment page takes card 4242… and declines 4000 0000 0000 0002, it signs its webhooks as Stripe does, and the fake Shopify records the orders created in it. Native-only features (camera capture, push) aren't covered.
 
 ### On Android (native)
 
@@ -122,7 +130,8 @@ ANDROID_HOME=~/Library/Android/sdk pnpm test:android
 
 ## Not built yet
 
-- **In-app checkout.** Today "Order" opens the roaster's own Shopify checkout with the chosen size and quantity already in the cart (a cart permalink, `packages/shared/src/shopify.ts`), so PropperBrew takes no commission yet. The schema (`orders`, `order_lines`, `roasters.stripe_account_id`, `commission_bps`) is ready for Option 2: Stripe Connect plus Shopify `orderCreate`. The API routes, Stripe webhook and basket UI still need writing.
+- **Checkout against real Stripe.** Every test runs against `e2e/fake-stripe.ts`. Before taking real money, run the flow once with Stripe test keys and the Stripe CLI (`stripe listen --forward-to localhost:4000/stripe/webhook`), and check the Connect settings (Express accounts, GB) in the Stripe dashboard.
+- Refunds and order updates. Refunds are done in Stripe and Shopify by hand. Shopify's fulfilment webhooks aren't used to update order status yet ("Posted").
 - A community recipe form on the website (the app has one).
 - Photo uploads (review photos, roaster logos). Hero photos come from the roaster's synced coffee photos for now.
 - Recommendations: `pgvector` is enabled, but nothing uses embeddings yet.

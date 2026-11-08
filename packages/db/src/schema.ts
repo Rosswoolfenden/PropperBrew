@@ -25,6 +25,7 @@ import {
   ROASTER_ROLES,
   type FlavourScores,
   type RecipeStep,
+  type ShippingAddress,
 } from "@propperbrew/shared";
 
 export const processEnum = pgEnum("process", PROCESSES);
@@ -90,6 +91,8 @@ export const roasters = pgTable(
     freeShippingThresholdPence: integer("free_shipping_threshold_pence"),
     /** Stripe Connect account for Option 2 (marketplace checkout). */
     stripeAccountId: text("stripe_account_id"),
+    /** Stripe says the account can take charges and receive payouts: their coffees can go in the basket. */
+    stripePayoutsEnabled: boolean("stripe_payouts_enabled").notNull().default(false),
     commissionBps: integer("commission_bps").notNull().default(1200),
     isActive: boolean("is_active").notNull().default(true),
     ...timestamps,
@@ -300,12 +303,53 @@ export const shelfEntries = pgTable(
   (t) => [index("shelf_entries_user_idx").on(t.userId, t.finishedAt)],
 );
 
+/** A person's basket: coffees from any roaster that takes payment through PropperBrew. */
+export const basketItems = pgTable(
+  "basket_items",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    shopifyVariantRowId: uuid("shopify_variant_row_id")
+      .notNull()
+      .references(() => shopifyVariants.id, { onDelete: "cascade" }),
+    quantity: integer("quantity").notNull(),
+    ...timestamps,
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.shopifyVariantRowId] }), check("basket_quantity_range", sql`${t.quantity} between 1 and 20`)],
+);
+
+/** One payment (a Stripe Checkout Session) covering an order per roaster. */
+export const checkouts = pgTable(
+  "checkouts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profiles.id),
+    /** open → paid, or open → expired if they never paid. */
+    status: text("status", { enum: ["open", "paid", "expired"] }).notNull().default("open"),
+    totalPence: integer("total_pence").notNull(),
+    email: text("email").notNull(),
+    shippingAddress: jsonb("shipping_address").$type<ShippingAddress>().notNull(),
+    stripeSessionId: text("stripe_session_id").unique(),
+    stripePaymentIntentId: text("stripe_payment_intent_id"),
+    /** The charge that paid for it: each roaster's transfer is made from it. */
+    stripeChargeId: text("stripe_charge_id"),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [index("checkouts_user_idx").on(t.userId, t.createdAt)],
+);
+
 /** Marketplace orders (Option 2). One per roaster per checkout; grouped by checkoutId. */
 export const orders = pgTable(
   "orders",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    checkoutId: uuid("checkout_id").notNull(),
+    checkoutId: uuid("checkout_id")
+      .notNull()
+      .references(() => checkouts.id, { onDelete: "cascade" }),
     userId: uuid("user_id")
       .notNull()
       .references(() => profiles.id),
@@ -321,10 +365,14 @@ export const orders = pgTable(
     shopifyOrderId: text("shopify_order_id"),
     shopifyOrderName: text("shopify_order_name"),
     shippingAddress: jsonb("shipping_address"),
+    /** Paying the roaster or creating their Shopify order failed: why, and how many tries so far. */
+    lastError: text("last_error"),
+    attempts: integer("attempts").notNull().default(0),
     ...timestamps,
   },
   (t) => [
     index("orders_checkout_idx").on(t.checkoutId),
+    index("orders_roaster_idx").on(t.roasterId, t.createdAt),
     uniqueIndex("orders_shopify_order_idx").on(t.roasterId, t.shopifyOrderId),
   ],
 );
@@ -339,6 +387,8 @@ export const orderLines = pgTable("order_lines", {
     .references(() => shopifyVariants.id),
   quantity: integer("quantity").notNull(),
   unitPricePence: integer("unit_price_pence").notNull(),
+  /** What was bought, as it read at the time ("El Diviso Pink Bourbon · 250g / Wholebean"). */
+  title: text("title").notNull(),
 });
 
 /** Idempotency log for Shopify webhooks (Shopify retries and can deliver duplicates). */

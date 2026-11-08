@@ -3,7 +3,7 @@
  * data flow; native-only behaviour (camera capture, push) is out of reach here.
  */
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
-import { accessToken, accounts, apiUrl, clearReviews, rgb, seed, sql } from "../fixtures";
+import { accessToken, accounts, apiUrl, clearOrders, clearReviews, ports, rgb, seed, sql } from "../fixtures";
 
 const beanPath = `/bean/${seed.roaster.slug}/${seed.inStock.slug}`;
 /** The in-screen headline; the native-stack header renders the same title as a level-1 heading. */
@@ -76,9 +76,16 @@ test.describe("discover", () => {
     await expect(arrivals.nth(2)).toContainText("Cerrado Pulped Natural");
   });
 
-  test("puts scan and shelf in the top bar", async ({ page }) => {
+  test("puts scan, shelf, basket and profile in the top bar, clear of the title", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByText("PropperBrew", { exact: true })).toBeVisible();
+    const title = page.getByText("PropperBrew", { exact: true });
+    await expect(title).toBeVisible();
+    const icons = ["Scan a bag", "My shelf", "Basket, 0 items", "Profile"].map((name) => page.getByRole("button", { name }));
+    const t = (await title.boundingBox())!;
+    for (const icon of icons) {
+      const b = (await icon.boundingBox())!;
+      expect(b.x + b.width <= t.x || b.x >= t.x + t.width, "icon overlaps the title").toBe(true);
+    }
     await page.getByRole("button", { name: "My shelf" }).click();
     await expect(page).toHaveURL("/shelf");
     await page.goBack();
@@ -694,6 +701,83 @@ test.describe("profile", () => {
   test("says when there's no one by that name", async ({ page }) => {
     await page.goto("/user/nobody-here");
     await expect(page.getByText("There's no one here by that name.")).toBeVisible();
+  });
+});
+
+test.describe("basket and checkout", () => {
+  const kochere = `/bean/${seed.kochere.roasterSlug}/${seed.kochere.slug}`;
+  test.beforeEach(() => clearOrders(seed.alice.id));
+  test.afterAll(() => clearOrders(seed.alice.id));
+
+  test("signed out, adding to the basket asks you to sign in first", async ({ page }) => {
+    await page.goto(kochere);
+    await expect(page.getByText("Delivery from Hackney Heights: £3.95, free on orders of £30.00 or more.")).toBeVisible();
+    await page.getByRole("button", { name: "Add · £14.00" }).click();
+    await expect(page).toHaveURL("/sign-in");
+  });
+
+  test("add coffees, check out, pay on Stripe's page and see the order", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/");
+    await expect(page.getByRole("button", { name: "Basket, 0 items" })).toBeVisible();
+
+    await page.goto(kochere);
+    await page.getByRole("button", { name: "More" }).click();
+    await page.getByRole("button", { name: "Add · £28.00" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Added" })).toContainText("Added 2 × 250g / Wholebean");
+    await page.getByRole("link", { name: "View basket →" }).click();
+    await expect(page).toHaveURL("/basket");
+
+    const group = page.getByRole("region", { name: "From Hackney Heights" }).filter({ visible: true });
+    await expect(group.getByRole("listitem")).toHaveCount(1);
+    const summary = page.getByRole("region", { name: "Order summary" }).filter({ visible: true });
+    await expect(summary).toContainText("Subtotal£28.00");
+    await expect(summary).toContainText("Delivery from Hackney Heights£3.95");
+    await expect(summary).toContainText("Total£31.95");
+    await expect(summary.getByText("Add £2.00 more from Hackney Heights for free delivery.")).toBeVisible();
+
+    // Down to one, then back to two.
+    const quantity = group.getByRole("group", { name: `Quantity of ${seed.kochere.name}` });
+    await quantity.getByRole("button", { name: "Fewer" }).click();
+    await expect(summary).toContainText("Total£17.95");
+    await quantity.getByRole("button", { name: "More" }).click();
+    await expect(summary).toContainText("Total£31.95");
+
+    await summary.getByRole("button", { name: "Proceed to checkout" }).click();
+    await expect(page).toHaveURL("/checkout");
+    const pay = page.getByRole("button", { name: "Pay £31.95" });
+    await pay.click();
+    await expect(page.getByText("Enter a UK postcode, like LS1 6DT")).toBeVisible();
+    await page.getByLabel("Full name").fill("Alice Smith");
+    await page.getByLabel("Street address").fill("1 Mare Street");
+    await page.getByLabel("Town or city").fill("London");
+    await page.getByLabel("Postcode").fill("e8 1aa");
+
+    // Stripe's page opens in the browser (a new tab on the web); the app waits on its order screen.
+    const [stripe] = await Promise.all([page.waitForEvent("popup"), pay.click()]);
+    await expect(stripe).toHaveURL(new RegExp(`^http://localhost:${ports.fakeStripe}/pay/`));
+    await expect(page).toHaveURL(/\/order\/[0-9a-f-]{36}$/);
+    await expect(screenHeading(page, "Waiting for your payment")).toBeVisible();
+
+    await stripe.getByRole("button", { name: "Pay £31.95" }).click();
+    await expect(stripe.getByRole("heading", { name: "Payment received" })).toBeVisible();
+    await stripe.close();
+
+    await expect(screenHeading(page, "Your brew is on its way.")).toBeVisible();
+    const manifest = page.getByRole("region", { name: "What you ordered" });
+    await expect(manifest).toContainText("Kochere Natural · 250g / Wholebean");
+    await expect(manifest).toContainText("With the roaster");
+    await expect(manifest).toContainText("Total£31.95");
+    await expect(page.getByText(/^PB-[0-9A-F]{8}$/)).toBeVisible();
+
+    await page.getByRole("button", { name: "All your orders" }).click();
+    await expect(page).toHaveURL("/orders");
+    await expect(page.getByRole("link", { name: /^Order PB-/ })).toHaveCount(1);
+  });
+
+  test("signed out, the basket asks you to sign in", async ({ page }) => {
+    await page.goto("/basket");
+    await expect(page.getByRole("button", { name: "Sign in to see your basket" })).toBeVisible();
   });
 });
 

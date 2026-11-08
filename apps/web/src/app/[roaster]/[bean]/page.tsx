@@ -9,9 +9,11 @@ import {
   formatPriceFrom,
   humanize,
   SENSORY,
+  deliveryNote,
   SENSORY_DIMENSIONS,
   sensoryLevel,
 } from "@propperbrew/shared";
+import { AddToBasket } from "@/components/add-to-basket";
 import { OrderForm } from "@/components/order-form";
 import { Rating, Stars } from "@/components/rating";
 import { ReviewComposer } from "@/components/review-composer";
@@ -118,7 +120,11 @@ export default async function BeanPage({ params }: { params: Params }) {
           <section>
             <h2>Order</h2>
             {orderable ? (
-              <OrderForm variants={orderable.variants} checkoutDomain={orderable.domain} roasterName={bean.roaster.name} />
+              bean.inAppCheckout ? (
+                <AddToBasket variants={orderable.variants} delivery={deliveryNote(bean.roaster)} />
+              ) : (
+                <OrderForm variants={orderable.variants} checkoutDomain={orderable.domain} roasterName={bean.roaster.name} />
+              )
             ) : (
               <p className="note">This lot has sold out. Reviews and recipes stay here for reference.</p>
             )}

@@ -40,7 +40,12 @@ export default function MyProfileScreen() {
       {editing ? (
         <EditProfile profile={me.data} onDone={() => setEditing(false)} />
       ) : (
-        <Button label="Edit profile" icon="edit" variant="secondary" onPress={() => setEditing(true)} />
+        <View style={{ gap: 12 }}>
+          <Button label="Edit profile" icon="edit" variant="secondary" onPress={() => setEditing(true)} />
+          <Link href="/orders" asChild>
+            <Button label="Your orders" icon="receipt-long" variant="secondary" />
+          </Link>
+        </View>
       )}
     </ProfileScreen>
   );

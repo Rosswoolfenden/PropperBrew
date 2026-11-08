@@ -35,6 +35,12 @@ insert into public.roasters (id, slug, name, city, bio, shopify_domain, shopify_
   ('00000000-0000-4000-8000-000000000120', 'gone-quiet', 'Gone Quiet Roasters', 'Bristol', null,
    'gone-quiet.myshopify.com', now() - interval '90 days', now());
 
+-- Hackney Heights takes payment through PropperBrew (Stripe payouts set up), with its own delivery
+-- charge: £3.95, free over £30. North Star still sends buyers to its Shopify store.
+update public.roasters set stripe_account_id = 'acct_hackney_e2e', stripe_payouts_enabled = true,
+  shipping_flat_pence = 395, free_shipping_threshold_pence = 3000
+where id = '00000000-0000-4000-8000-000000000110';
+
 -- North Star has filled in its profile; Hackney Heights hasn't yet.
 update public.roasters set
   tagline = 'Roasted light, so you taste the farm, not the furnace.',

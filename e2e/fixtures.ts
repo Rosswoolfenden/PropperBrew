@@ -1,8 +1,8 @@
 import { execFileSync } from "node:child_process";
-import { createHmac } from "node:crypto";
+import { createCipheriv, createHmac, randomBytes } from "node:crypto";
 import { join } from "node:path";
 
-export const ports = { db: 54329, supabase: 54339, api: 4100, web: 3100, mobile: 8181, fakeShopify: 4199 } as const;
+export const ports = { db: 54329, supabase: 54339, api: 4100, web: 3100, mobile: 8181, fakeShopify: 4199, fakeStripe: 4198 } as const;
 export const apiUrl = `http://localhost:${ports.api}`;
 export const webUrl = `http://localhost:${ports.web}`;
 /** The auth service, behind the Supabase-style gateway (see compose.yaml). */
@@ -24,6 +24,10 @@ export const apiEnv = {
   SHOPIFY_SCOPES: "read_products",
   // OAuth and Admin API calls go to e2e/fake-shopify.ts.
   SHOPIFY_ORIGIN_OVERRIDE: `http://localhost:${ports.fakeShopify}`,
+  // Payments go to e2e/fake-stripe.ts, which signs its webhooks with this secret.
+  STRIPE_SECRET_KEY: "sk_test_e2e",
+  STRIPE_WEBHOOK_SECRET: "whsec_e2e",
+  STRIPE_API_BASE: `http://localhost:${ports.fakeStripe}`,
 };
 
 /** NEXT_PUBLIC_* values for the website under test (baked in at build time). */
@@ -77,6 +81,8 @@ export const seed = {
     variants: { small: "2001", large: "2002" },
   },
   soldOut: { slug: "kiambu-ab", name: "Kiambu AB" },
+  /** Takes payment through PropperBrew (Stripe payouts on), so its coffees go in the basket. */
+  payingRoaster: { id: "00000000-0000-4000-8000-000000000110", stripeAccountId: "acct_hackney_e2e" },
   /** Hackney Heights' coffees: no reviews yet. Alice has Cerrado on her shelf, at its peak. */
   kochere: { id: "00000000-0000-4000-8000-000000000211", slug: "kochere", name: "Kochere Natural", roasterSlug: "hackney-heights" },
   cerrado: { id: "00000000-0000-4000-8000-000000000212", slug: "cerrado", name: "Cerrado Pulped Natural", roasterSlug: "hackney-heights" },
@@ -117,4 +123,17 @@ export const seededShopDomains = ["north-star-coffee.myshopify.com", "hackney-he
 export function clearReviews(coffeeBeanId: string) {
   sql(`delete from reviews where coffee_bean_id = '${coffeeBeanId}';
        update coffee_beans set avg_rating = null, review_count = 0, avg_flavour_scores = null where id = '${coffeeBeanId}'`);
+}
+
+/** A Shopify token encrypted as the API stores them (apps/api/src/lib/crypto.ts): base64(iv | tag | ciphertext). */
+export function encryptToken(plaintext: string) {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", Buffer.from(apiEnv.TOKEN_ENCRYPTION_KEY, "base64"), iv);
+  const ct = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  return Buffer.concat([iv, cipher.getAuthTag(), ct]).toString("base64");
+}
+
+/** Empty someone's basket and remove their orders, so checkout tests start clean. */
+export function clearOrders(userId: string) {
+  sql(`delete from basket_items where user_id = '${userId}'; delete from checkouts where user_id = '${userId}'`);
 }

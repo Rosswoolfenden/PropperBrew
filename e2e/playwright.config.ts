@@ -13,7 +13,7 @@ export default defineConfig({
   reporter: [["list"]],
   use: { trace: "retain-on-failure" },
   projects: [
-    { name: "web", testMatch: /(web|accounts|reviews|roasters|search|profiles)\.spec\.ts/, use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${ports.web}` } },
+    { name: "web", testMatch: /(web|accounts|reviews|roasters|search|profiles|checkout)\.spec\.ts/, use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${ports.web}` } },
     { name: "mobile", testMatch: "mobile.spec.ts", use: { ...phone, baseURL: `http://localhost:${ports.mobile}` } },
   ],
   webServer: [
@@ -21,6 +21,11 @@ export default defineConfig({
       name: "fake-shopify",
       command: "corepack pnpm exec tsx fake-shopify.ts",
       url: `http://localhost:${ports.fakeShopify}/health`,
+    },
+    {
+      name: "fake-stripe",
+      command: "corepack pnpm exec tsx fake-stripe.ts",
+      url: `http://localhost:${ports.fakeStripe}/health`,
     },
     {
       name: "api",

@@ -26,10 +26,23 @@ const Env = z
      * instead of https://${shop}. Refused in production.
      */
     SHOPIFY_ORIGIN_OVERRIDE: z.url().optional(),
+    /** In-app checkout (Stripe Connect). Without both, coffees are ordered on the roaster's own Shopify store. */
+    STRIPE_SECRET_KEY: z.string().optional(),
+    STRIPE_WEBHOOK_SECRET: z.string().optional(),
+    /** Tests only: talk to a fake Stripe at this origin (e2e/fake-stripe.ts). Refused in production. */
+    STRIPE_API_BASE: z.url().optional(),
   })
   .refine((e) => !(e.NODE_ENV === "production" && e.SHOPIFY_ORIGIN_OVERRIDE), {
     message: "SHOPIFY_ORIGIN_OVERRIDE is for tests and can't be used in production",
     path: ["SHOPIFY_ORIGIN_OVERRIDE"],
+  })
+  .refine((e) => !(e.NODE_ENV === "production" && e.STRIPE_API_BASE), {
+    message: "STRIPE_API_BASE is for tests and can't be used in production",
+    path: ["STRIPE_API_BASE"],
+  })
+  .refine((e) => !e.STRIPE_SECRET_KEY === !e.STRIPE_WEBHOOK_SECRET, {
+    message: "Set STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET together",
+    path: ["STRIPE_WEBHOOK_SECRET"],
   });
 
 export type Env = z.infer<typeof Env>;

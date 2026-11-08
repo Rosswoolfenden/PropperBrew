@@ -13,6 +13,9 @@ export function SiteHeader() {
   const router = useRouter();
   // The profile is the source of truth for whether this is a business account.
   const me = useQuery({ ...trpc.me.get.queryOptions(), enabled: !!session });
+  const checkout = useQuery(trpc.basket.enabled.queryOptions());
+  const basket = useQuery({ ...trpc.basket.get.queryOptions(), enabled: !!session && checkout.data === true });
+  const count = basket.data?.count ?? 0;
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -40,9 +43,26 @@ export function SiteHeader() {
                   Dashboard
                 </Link>
               )}
+              {checkout.data && (
+                <Link href="/basket" className="nav-link nav-basket" aria-label={`Basket, ${count} ${count === 1 ? "item" : "items"}`}>
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <path fill="currentColor" d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2m-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2m6 16H6V8h2v2c0 .55.45 1 1 1s1-.45 1-1V8h4v2c0 .55.45 1 1 1s1-.45 1-1V8h2z" />
+                  </svg>
+                  {count > 0 && <span className="basket-count">{count}</span>}
+                </Link>
+              )}
               {me.data ? (
-                <Link href={`/u/${me.data.username}`} className="nav-link nav-user" title={session.user.email}>
-                  {me.data.displayName ?? me.data.username}
+                <Link
+                  href={`/u/${me.data.username}`}
+                  className="nav-link nav-user"
+                  title={session.user.email}
+                  aria-label={me.data.displayName ?? me.data.username}
+                >
+                  {/* Phones show just the icon. */}
+                  <svg className="nav-user-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4m0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4" />
+                  </svg>
+                  <span className="nav-user-name">{me.data.displayName ?? me.data.username}</span>
                 </Link>
               ) : (
                 <span className="nav-user">{session.user.email}</span>

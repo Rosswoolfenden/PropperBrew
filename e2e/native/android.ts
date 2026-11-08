@@ -65,7 +65,7 @@ const cases: [name: string, run: (d: Device) => Promise<void>][] = [
       await d.type("jasmine");
       await d.expect([/^1 coffee$/i, seed.kochere.name]);
       await d.tap(seed.kochere.name);
-      await d.expect(["Ethiopia • Light roast", "Order · £14.00"]);
+      await d.expect(["Ethiopia • Light roast", "Add · £14.00"]);
     },
   ],
   [
@@ -93,7 +93,23 @@ const cases: [name: string, run: (d: Device) => Promise<void>][] = [
       await d.launch("/");
       await d.scrollTo("Kochere Natural");
       await d.tap("Kochere Natural");
-      await d.expect(["Ethiopia • Light roast", "Order · £14.00"]);
+      await d.expect(["Ethiopia • Light roast", "Add · £14.00"]);
+    },
+  ],
+  [
+    "basket: a roaster paid through PropperBrew sells from the basket; signed out asks to sign in",
+    async (d) => {
+      await d.launch(`/bean/${seed.kochere.roasterSlug}/${seed.kochere.slug}`);
+      await d.scrollTo("Delivery from Hackney Heights: £3.95, free on orders of £30.00 or more.", aboveOrderBar);
+      await d.tap("Add · £14.00");
+      await d.expect(["The Ritual Awaits", "Email address"]);
+    },
+  ],
+  [
+    "basket: signed out, the basket offers sign in",
+    async (d) => {
+      await d.launch("/basket");
+      await d.expect(["Sign in to see your basket"]);
     },
   ],
   [
@@ -231,6 +247,8 @@ async function main() {
   execFileSync("corepack", ["pnpm", "exec", "tsx", "setup-db.ts"], { cwd: join(repo, "e2e"), stdio: "inherit" });
 
   console.info("Starting the API and Metro…");
+  start(join(repo, "e2e"), ["tsx", "fake-stripe.ts"], {});
+  start(join(repo, "e2e"), ["tsx", "fake-shopify.ts"], {});
   start(join(repo, "apps/api"), ["tsx", "src/index.ts"], apiEnv);
   // --clear so the device always gets a bundle built from the current code.
   start(join(repo, "apps/mobile"), ["expo", "start", "--port", String(METRO_PORT), "--clear"], { ...appEnv, CI: "1" });

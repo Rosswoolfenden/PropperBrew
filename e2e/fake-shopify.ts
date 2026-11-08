@@ -5,12 +5,17 @@
  *
  * Every shop "exists" and its staff approve straight away. A shop whose name contains "unverified"
  * hands back a staff member whose email isn't verified.
+ *
+ * Orders the API creates (orderCreate) are kept for tests to read at GET /__orders. POST
+ * /__orders/fail with "on" makes orderCreate fail until it's turned "off" again.
  */
 import { createHmac, randomBytes } from "node:crypto";
 import { createServer } from "node:http";
 import { apiEnv, ports } from "./fixtures";
 
 const grants = new Map<string, { shop: string; perUser: boolean }>();
+const createdOrders: { shop: string; order: Record<string, unknown>; options: Record<string, unknown> }[] = [];
+let failOrders = false;
 
 const handleOf = (shop: string) => shop.replace(/\.myshopify\.com$/, "");
 const titleCase = (handle: string) => handle.replace(/(^|-)(\w)/g, (_, dash, c: string) => `${dash ? " " : ""}${c.toUpperCase()}`);
@@ -40,6 +45,11 @@ const readBody = (req: import("node:http").IncomingMessage) =>
 createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", `http://localhost:${ports.fakeShopify}`);
   if (url.pathname === "/health") return json(res, 200, { ok: true });
+  if (url.pathname === "/__orders") return json(res, 200, createdOrders);
+  if (req.method === "POST" && url.pathname === "/__orders/fail") {
+    failOrders = (await readBody(req)) === "on";
+    return json(res, 200, { failOrders });
+  }
 
   const [, shop, ...rest] = url.pathname.split("/");
   const path = `/${rest.join("/")}`;
@@ -86,7 +96,13 @@ createServer(async (req, res) => {
   }
 
   if (req.method === "POST" && /^\/admin\/api\/[^/]+\/graphql\.json$/.test(path)) {
-    const { query } = JSON.parse(await readBody(req)) as { query: string };
+    const { query, variables } = JSON.parse(await readBody(req)) as { query: string; variables?: Record<string, Record<string, unknown>> };
+    if (query.includes("orderCreate(")) {
+      if (failOrders) return json(res, 200, { data: { orderCreate: { order: null, userErrors: [{ field: ["order"], message: "Shopify is having a moment" }] } } });
+      createdOrders.push({ shop, order: variables!.order!, options: variables!.options ?? {} });
+      const number = 1000 + createdOrders.length;
+      return json(res, 200, { data: { orderCreate: { order: { id: `gid://shopify/Order/${number}`, name: `#${number}` }, userErrors: [] } } });
+    }
     if (query.includes("shop {")) {
       return json(res, 200, { data: { shop: { name: titleCase(handleOf(shop)), url: `https://${shop}` } } });
     }

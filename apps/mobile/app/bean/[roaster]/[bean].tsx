@@ -2,7 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { formatAltitude, formatPriceFrom, humanize, possessive, radius, type BrewMethod } from "@propperbrew/shared";
+import { deliveryNote, formatAltitude, formatPriceFrom, humanize, possessive, radius, type BrewMethod } from "@propperbrew/shared";
 import { ORDER_BAR_HEIGHT, OrderBar, SizeOptions } from "@/order";
 import { RecipeCard } from "@/recipe-card";
 import { fonts, themed } from "@/theme";
@@ -116,7 +116,7 @@ export default function BeanScreen() {
               <SizeOptions variants={b.variants} selectedId={variant.id} onSelect={setVariantId} />
               {checkout ? (
                 <Body italic muted style={{ fontSize: 15 }}>
-                  You&apos;ll check out on {possessive(b.roaster.name)} own shop.
+                  {b.inAppCheckout ? deliveryNote(b.roaster) : `You'll check out on ${possessive(b.roaster.name)} own shop.`}
                 </Body>
               ) : (
                 <Body italic muted style={styles.note}>
@@ -202,6 +202,7 @@ export default function BeanScreen() {
           quantity={quantity}
           onQuantityChange={setQuantity}
           checkoutDomain={checkout.domain}
+          inAppCheckout={b.inAppCheckout}
         />
       )}
     </View>

@@ -3,6 +3,7 @@ import { router, Stack } from "expo-router";
 import { useRef } from "react";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { BasketIcon } from "@/basket";
 import { NewArrivals, RoasterCollection, RoasterRow, RoasterSpotlight } from "@/discover";
 import { fonts, themed, useColors } from "@/theme";
 import { useTRPC } from "@/trpc";
@@ -28,10 +29,15 @@ export default function DiscoverScreen() {
     <ScrollView ref={scroll} contentContainerStyle={styles.container}>
       <Stack.Screen
         options={{
-          headerLeft: () => <HeaderIcon icon="photo-camera" label="Scan a bag" onPress={() => router.push("/scan")} />,
+          headerLeft: () => (
+            <View style={styles.headerIcons}>
+              <HeaderIcon icon="photo-camera" label="Scan a bag" onPress={() => router.push("/scan")} />
+              <HeaderIcon icon="inventory-2" label="My shelf" onPress={() => router.push("/shelf")} />
+            </View>
+          ),
           headerRight: () => (
             <View style={styles.headerIcons}>
-              <HeaderIcon icon="inventory-2" label="My shelf" onPress={() => router.push("/shelf")} />
+              <BasketIcon />
               <HeaderIcon icon="person" label="Profile" onPress={() => router.push("/profile")} />
             </View>
           ),

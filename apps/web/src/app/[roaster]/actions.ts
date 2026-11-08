@@ -11,3 +11,10 @@ export async function refreshRoasterPages(roasterSlug: string, beanSlug?: string
   if (beanSlug) revalidatePath(`/${roasterSlug}/${beanSlug}`);
   revalidatePath("/");
 }
+
+/** After a roaster turns on payouts or changes delivery: every coffee page shows how to buy, so rebuild them all. */
+export async function refreshAllCoffeePages(roasterSlug: string) {
+  if (!SLUG.test(roasterSlug)) return;
+  revalidatePath(`/${roasterSlug}`);
+  revalidatePath("/[roaster]/[bean]", "page");
+}

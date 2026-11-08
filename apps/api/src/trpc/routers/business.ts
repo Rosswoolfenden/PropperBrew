@@ -1,10 +1,19 @@
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { z } from "zod";
-import { brewRecipes, coffeeBeans, profiles, roasterMembers, roasters, reviews, type Db } from "@propperbrew/db";
-import { CreateBrewRecipeInput, normalizeShopDomain, ratingFromDb, RoasterProfileInput, type RoasterRole } from "@propperbrew/shared";
+import { brewRecipes, checkouts, coffeeBeans, orderLines, orders, profiles, roasterMembers, roasters, reviews, type Db } from "@propperbrew/db";
+import {
+  CreateBrewRecipeInput,
+  DeliveryInput,
+  normalizeShopDomain,
+  orderReference,
+  ratingFromDb,
+  RoasterProfileInput,
+  type RoasterRole,
+} from "@propperbrew/shared";
 import { connectToken } from "../../business/connect-token";
 import { env } from "../../env";
+import { checkoutEnabled, payoutsReady, requireStripe } from "../../payments/stripe";
 import { protectedProcedure, router } from "../init";
 import { recipeColumns } from "./recipes";
 
@@ -18,6 +27,7 @@ async function requireMember(db: Db, userId: string, roasterId: string): Promise
 }
 
 const FEEDBACK_LIMIT = 8;
+const ORDERS_LIMIT = 20;
 
 export const businessRouter = router({
   /** The signed-in person's business side: the roasters they belong to, each with its coffees. */
@@ -47,6 +57,10 @@ export const businessRouter = router({
             address: true,
             websiteUrl: true,
             heroImageUrl: true,
+            stripeAccountId: true,
+            stripePayoutsEnabled: true,
+            shippingFlatPence: true,
+            freeShippingThresholdPence: true,
           },
         },
       },
@@ -62,6 +76,23 @@ export const businessRouter = router({
       : [];
 
     // The roaster's own recommendations, and what the community has said about their coffees.
+    // Orders placed here (paid ones: abandoned checkouts aren't the roaster's business).
+    const recentOrders = roasterIds.length
+      ? await ctx.db
+          .select({ order: orders, address: checkouts.shippingAddress })
+          .from(orders)
+          .innerJoin(checkouts, eq(checkouts.id, orders.checkoutId))
+          .where(and(inArray(orders.roasterId, roasterIds), inArray(orders.status, ["paid", "pushed_to_shopify", "fulfilled", "partially_fulfilled", "refunded"])))
+          .orderBy(desc(orders.createdAt))
+          .limit(ORDERS_LIMIT * roasterIds.length)
+      : [];
+    const recentLines = recentOrders.length
+      ? await ctx.db
+          .select({ orderId: orderLines.orderId, title: orderLines.title, quantity: orderLines.quantity })
+          .from(orderLines)
+          .where(inArray(orderLines.orderId, recentOrders.map((o) => o.order.id)))
+      : [];
+
     const [recommendations, recentReviews, communityRecipes] = roasterIds.length
       ? await Promise.all([
           ctx.db.query.brewRecipes.findMany({
@@ -107,7 +138,7 @@ export const businessRouter = router({
       email: ctx.user.email ?? null,
       username: profile.username,
       accountType: profile.accountType,
-      roasters: memberships.map(({ role, roaster: { shopifyInstalledAt, shopifyUninstalledAt, ...roaster } }) => {
+      roasters: memberships.map(({ role, roaster: { shopifyInstalledAt, shopifyUninstalledAt, stripeAccountId, stripePayoutsEnabled, shippingFlatPence, freeShippingThresholdPence, ...roaster } }) => {
         const coffees = beans
           .filter((b) => b.roasterId === roaster.id)
           .map(({ variants, roasterId: _r, avgRating, ...b }) => {
@@ -128,6 +159,23 @@ export const businessRouter = router({
           },
           coffees,
           liveCount: coffees.filter((c) => c.status === "in_stock").length,
+          payouts: { available: checkoutEnabled, started: !!stripeAccountId, enabled: stripePayoutsEnabled },
+          delivery: { shippingFlatPence, freeShippingThresholdPence },
+          orders: recentOrders
+            .filter(({ order }) => order.roasterId === roaster.id)
+            .slice(0, ORDERS_LIMIT)
+            .map(({ order, address }) => ({
+              id: order.id,
+              reference: orderReference(order.checkoutId),
+              createdAt: order.createdAt,
+              status: order.status,
+              customer: address.name,
+              city: address.city,
+              lines: recentLines.filter((l) => l.orderId === order.id).map(({ orderId: _o, ...l }) => l),
+              totalPence: order.subtotalPence + order.shippingPence,
+              payoutPence: order.subtotalPence + order.shippingPence - order.platformFeePence,
+              shopifyOrderName: order.shopifyOrderName,
+            })),
           recommendations: recommendations
             .filter((r) => r.roasterId === roaster.id)
             .map(({ coffeeDoseDg, ...r }) => ({
@@ -185,6 +233,52 @@ export const businessRouter = router({
     await requireMember(ctx.db, ctx.user.id, recipe.roasterId);
     await ctx.db.delete(brewRecipes).where(eq(brewRecipes.id, input.recipeId));
     return { deleted: true };
+  }),
+
+  /** Start (or carry on) Stripe onboarding so the roaster can be paid for orders placed here. Owners only. */
+  setupPayouts: protectedProcedure.input(z.object({ roasterId: z.uuid() })).mutation(async ({ ctx, input }) => {
+    if ((await requireMember(ctx.db, ctx.user.id, input.roasterId)) !== "owner") {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Only the roaster's owner can set up payouts." });
+    }
+    if (!checkoutEnabled) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Payouts aren't available yet." });
+    const stripe = requireStripe();
+    const roaster = (await ctx.db.query.roasters.findFirst({ where: eq(roasters.id, input.roasterId) }))!;
+    let accountId = roaster.stripeAccountId;
+    if (!accountId) {
+      const account = await stripe.accounts.create(
+        {
+          type: "express",
+          country: "GB",
+          email: ctx.user.email,
+          capabilities: { transfers: { requested: true } },
+          business_profile: { name: roaster.name, ...(roaster.websiteUrl && { url: roaster.websiteUrl }) },
+          metadata: { roasterId: roaster.id },
+        },
+        { idempotencyKey: `connect-account-${roaster.id}` },
+      );
+      accountId = account.id;
+      await ctx.db.update(roasters).set({ stripeAccountId: accountId }).where(eq(roasters.id, roaster.id));
+    }
+    const back = (state: string) => `${env.PUBLIC_WEB_URL}/business/dashboard?payouts=${state}&roaster=${roaster.id}`;
+    const link = await stripe.accountLinks.create({ account: accountId, type: "account_onboarding", refresh_url: back("retry"), return_url: back("done") });
+    return { url: link.url };
+  }),
+
+  /** Ask Stripe whether onboarding is finished (on the way back from it; the account.updated webhook does the same). */
+  refreshPayouts: protectedProcedure.input(z.object({ roasterId: z.uuid() })).mutation(async ({ ctx, input }) => {
+    await requireMember(ctx.db, ctx.user.id, input.roasterId);
+    const roaster = await ctx.db.query.roasters.findFirst({ where: eq(roasters.id, input.roasterId), columns: { stripeAccountId: true } });
+    if (!roaster?.stripeAccountId || !checkoutEnabled) return { enabled: false };
+    const enabled = payoutsReady(await requireStripe().accounts.retrieve(roaster.stripeAccountId));
+    await ctx.db.update(roasters).set({ stripePayoutsEnabled: enabled }).where(eq(roasters.id, input.roasterId));
+    return { enabled };
+  }),
+
+  /** What the roaster charges for delivery on orders placed here. */
+  updateDelivery: protectedProcedure.input(DeliveryInput).mutation(async ({ ctx, input: { roasterId, ...delivery } }) => {
+    await requireMember(ctx.db, ctx.user.id, roasterId);
+    await ctx.db.update(roasters).set(delivery).where(eq(roasters.id, roasterId));
+    return delivery;
   }),
 
   /** Where to send a business account to connect its Shopify store (the install flow, linked to them). */

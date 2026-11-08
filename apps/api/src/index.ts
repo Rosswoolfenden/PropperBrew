@@ -10,6 +10,9 @@ import { env } from "./env";
 import { startRestNotificationJob } from "./jobs/rest-notifications";
 import { db } from "./lib/db";
 import { shopifyRoutes } from "./routes/shopify";
+import { stripeRoutes } from "./routes/stripe";
+import { startOrderSweeper } from "./payments/fulfil";
+import { checkoutEnabled } from "./payments/stripe";
 import { startWebhookSweeper } from "./shopify/webhooks";
 import { createContext } from "./trpc/init";
 import { appRouter } from "./trpc/router";
@@ -30,6 +33,7 @@ app.use(
 );
 
 app.route("/", shopifyRoutes);
+app.route("/", stripeRoutes);
 
 app.use(
   "/trpc/*",
@@ -44,7 +48,7 @@ app.use(
 const server = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
   console.info(`PropperBrew API listening on :${info.port}`);
 });
-const timers = [startWebhookSweeper(), startRestNotificationJob()];
+const timers = [startWebhookSweeper(), startRestNotificationJob(), ...(checkoutEnabled ? [startOrderSweeper(db)] : [])];
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.on(signal, () => {

@@ -1,10 +1,14 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { formatGbp, MAX_ORDER_QUANTITY, radius, shopifyCartUrl } from "@propperbrew/shared";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link, router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
+import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { fonts, themed, useColors } from "./theme";
-import type { RouterOutputs } from "./trpc";
+import { useSession } from "./session";
+import { useTRPC, type RouterOutputs } from "./trpc";
 import { Button, GUTTER } from "./ui";
 
 type Variant = RouterOutputs["beans"]["bySlug"]["variants"][number];
@@ -44,30 +48,68 @@ export function SizeOptions({
   );
 }
 
-/** Fixed bottom bar: quantity stepper and the button that opens the roaster's checkout. */
+/**
+ * Fixed bottom bar: quantity stepper, then either "Add to basket" (roasters paid through
+ * PropperBrew) or "Order", which opens the roaster's own Shopify checkout.
+ */
 export function OrderBar({
   variant,
   quantity,
   onQuantityChange,
   checkoutDomain,
+  inAppCheckout,
 }: {
   variant: Variant;
   quantity: number;
   onQuantityChange: (quantity: number) => void;
   checkoutDomain: string;
+  inAppCheckout: boolean;
 }) {
   const styles = useStyles();
   const insets = useSafeAreaInsets();
+  const { session } = useSession();
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const [added, setAdded] = useState<string | null>(null);
+  const add = useMutation(
+    trpc.basket.add.mutationOptions({
+      onSuccess: (basket) => {
+        queryClient.setQueryData(trpc.basket.get.queryKey(), basket);
+        setAdded(`Added ${quantity} × ${variant.title}`);
+      },
+    }),
+  );
+  const price = formatGbp(variant.pricePence * quantity);
 
   const order = () =>
     // An in-app browser sheet on iOS/Android, so people land back here after checkout.
     WebBrowser.openBrowserAsync(shopifyCartUrl(checkoutDomain, variant.shopifyVariantId, quantity));
+  const addToBasket = () => {
+    if (!session) return router.push("/sign-in");
+    add.mutate({ variantId: variant.id, quantity });
+  };
+  const changeQuantity = (n: number) => {
+    setAdded(null);
+    onQuantityChange(n);
+  };
 
   return (
     <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+      {(added || add.error) && (
+        <View role={added ? "status" : "alert"} style={styles.notice}>
+          <Text style={styles.noticeText}>{added ?? add.error?.message}</Text>
+          {added && (
+            <Link href="/basket" asChild>
+              <Pressable role="link">
+                <Text style={styles.noticeLink}>View basket →</Text>
+              </Pressable>
+            </Link>
+          )}
+        </View>
+      )}
       <View style={styles.barRow}>
         <View style={styles.stepper}>
-          <StepButton icon="remove" label="Fewer" disabled={quantity <= 1} onPress={() => onQuantityChange(quantity - 1)} />
+          <StepButton icon="remove" label="Fewer" disabled={quantity <= 1} onPress={() => changeQuantity(quantity - 1)} />
           <Text style={styles.quantity} aria-label={`Quantity ${quantity}`}>
             {quantity}
           </Text>
@@ -75,10 +117,20 @@ export function OrderBar({
             icon="add"
             label="More"
             disabled={quantity >= MAX_ORDER_QUANTITY}
-            onPress={() => onQuantityChange(quantity + 1)}
+            onPress={() => changeQuantity(quantity + 1)}
           />
         </View>
-        <Button label={`Order · ${formatGbp(variant.pricePence * quantity)}`} onPress={order} style={{ flex: 1 }} />
+        {inAppCheckout ? (
+          <Button
+            // Short, like "Order · £14.00", so it fits beside the stepper on a phone.
+            label={add.isPending ? "Adding…" : `Add · ${price}`}
+            disabled={add.isPending}
+            onPress={addToBasket}
+            style={{ flex: 1 }}
+          />
+        ) : (
+          <Button label={`Order · ${price}`} onPress={order} style={{ flex: 1 }} />
+        )}
       </View>
     </View>
   );
@@ -149,5 +201,8 @@ const useStyles = themed((c) =>
       backgroundColor: c.surfaceContainerHighest,
     },
     quantity: { width: 28, textAlign: "center", fontFamily: fonts.labelBold, fontSize: 15, color: c.primary },
+    notice: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12, paddingVertical: 10, paddingHorizontal: 14, borderRadius: radius.md, backgroundColor: c.secondaryContainer },
+    noticeText: { flex: 1, fontFamily: fonts.label, fontSize: 13, color: c.onSecondaryContainer },
+    noticeLink: { fontFamily: fonts.labelBold, fontSize: 12, letterSpacing: 1, textTransform: "uppercase", color: c.onSecondaryContainer },
   }),
 );

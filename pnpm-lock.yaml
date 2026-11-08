@@ -202,6 +202,9 @@ importers:
       jose:
         specifier: ^6.2.12
         version: 6.2.12
+      stripe:
+        specifier: 23.0.1
+        version: 23.0.1(@types/node@24.19.2)
       superjson:
         specifier: ^2.2.6
         version: 2.2.6
@@ -4321,6 +4324,15 @@ packages:
   strip-final-newline@3.0.0:
     resolution: {integrity: sha512-dOESqjYr96iWYylGObzd39EuNTa5VJxyvVAEm5Jnh7KGo75V43Hk1odPQkNDyXNmUR6k+gEiDVXnjB8HJ3crXw==}
     engines: {node: '>=12'}
+
+  stripe@23.0.1:
+    resolution: {integrity: sha512-VFLs9IAzSZ8GIm6/vqhjqOL0fbYrSNYCpgZ3LS3YkSi/i5RnyMpu/Hf9YxPTOCYwc3mZKU3IJvuvKffQH2NLMg==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@types/node': '>=20'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
 
   structured-headers@0.4.1:
     resolution: {integrity: sha512-0MP/Cxx5SzeeZ10p/bZI0S6MpgD+yxAhi1BOQ34jgnMXsCq3j1t6tQnZu+KdlL7dvJTLT3g9xN8tl10TqgFMcg==}
@@ -8695,6 +8707,10 @@ snapshots:
       ansi-regex: 5.0.1
 
   strip-final-newline@3.0.0: {}
+
+  stripe@23.0.1(@types/node@24.19.2):
+    optionalDependencies:
+      '@types/node': 24.19.2
 
   structured-headers@0.4.1: {}
 

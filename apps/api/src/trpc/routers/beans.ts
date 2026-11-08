@@ -3,6 +3,7 @@ import { and, asc, desc, eq, ilike, isNotNull, lte, or, sql, type SQL } from "dr
 import { z } from "zod";
 import { coffeeBeans, roasters, shopifyVariants } from "@propperbrew/db";
 import { BeanSearchInput, PROCESSES, ratingFromDb, ROAST_LEVELS } from "@propperbrew/shared";
+import { checkoutEnabled } from "../../payments/stripe";
 import { publicProcedure, router } from "../init";
 
 const withRating = <T extends { avgRating: number | null }>(b: T) => ({
@@ -126,6 +127,8 @@ export const beansRouter = router({
           : bean.variants.map(({ id, shopifyVariantId, title, weightG, grindOption, pricePence }) => ({ id, shopifyVariantId, title, weightG, grindOption, pricePence })),
         /** Where to send buyers (see shopifyCartUrl). Null when nothing can be ordered from the roaster's store. */
         checkoutDomain: bean.isArchived ? null : roaster.shopifyDomain,
+        /** Buy it here, in the basket, rather than on the roaster's store. */
+        inAppCheckout: !bean.isArchived && checkoutEnabled && roaster.isActive && roaster.stripePayoutsEnabled,
       };
     }),
 });

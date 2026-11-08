@@ -95,6 +95,9 @@ services:
       SHOPIFY_API_KEY: placeholder
       SHOPIFY_API_SECRET: placeholder
       SHOPIFY_SCOPES: read_products
+      # In-app checkout is off unless you pass Stripe test keys (see README, "In-app checkout").
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
     ports:
       - ${API_PORT:-4000}:4000
     depends_on:
