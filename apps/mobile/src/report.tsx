@@ -26,7 +26,7 @@ export function ReportButton({
   const styles = useStyles();
   const colors = useColors();
   const trpc = useTRPC();
-  const { session } = useSession();
+  const { session, ready } = useSession();
   const me = useQuery({ ...trpc.me.get.queryOptions(), enabled: !!session });
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<Reason | null>(null);
@@ -52,6 +52,7 @@ export function ReportButton({
         role="button"
         aria-label={`Report ${what}`}
         hitSlop={8}
+        disabled={!ready}
         onPress={() => (session ? setOpen(true) : router.push("/sign-in"))}
         style={{ alignSelf: "flex-start" }}
       >

@@ -37,16 +37,11 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: colors.surface },
         }}
       >
-        <Stack.Screen
-          name="index"
-          options={{ title: BRAND, headerTitleStyle: { fontFamily: fonts.headline, fontSize: 20, color: colors.primary } }}
-        />
+        {/* Explore, Journal, Basket and Profile; everything else opens on top of them. */}
+        <Stack.Screen name="(tabs)" options={{ headerShown: false, title: BRAND }} />
         <Stack.Screen name="scan" options={{ title: "Scan a bag", presentation: "modal" }} />
-        <Stack.Screen name="shelf" options={{ title: "My shelf" }} />
         <Stack.Screen name="search" options={{ title: "Search" }} />
-        <Stack.Screen name="profile" options={{ title: "Profile" }} />
         <Stack.Screen name="user/[username]" options={{ title: BRAND }} />
-        <Stack.Screen name="basket" options={{ title: "Basket" }} />
         <Stack.Screen name="checkout" options={{ title: "Checkout" }} />
         <Stack.Screen name="order/[id]" options={{ title: "Your order", headerBackVisible: false }} />
         <Stack.Screen name="orders" options={{ title: "Your orders" }} />

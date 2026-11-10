@@ -1,13 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { router, Stack } from "expo-router";
+import { router } from "expo-router";
 import { useRef } from "react";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { BasketIcon } from "@/basket";
 import { NewArrivals, RoasterCollection, RoasterRow, RoasterSpotlight } from "@/discover";
 import { fonts, themed, useColors } from "@/theme";
 import { useTRPC } from "@/trpc";
-import { Body, Button, GUTTER, HeaderIcon, Loading } from "@/ui";
+import { Body, Button, GUTTER, Loading } from "@/ui";
 
 /** How many roasters the spotlight cycles through. */
 const SPOTLIGHT_COUNT = 4;
@@ -27,22 +26,6 @@ export default function DiscoverScreen() {
 
   return (
     <ScrollView ref={scroll} contentContainerStyle={styles.container}>
-      <Stack.Screen
-        options={{
-          headerLeft: () => (
-            <View style={styles.headerIcons}>
-              <HeaderIcon icon="photo-camera" label="Scan a bag" onPress={() => router.push("/scan")} />
-              <HeaderIcon icon="inventory-2" label="My shelf" onPress={() => router.push("/shelf")} />
-            </View>
-          ),
-          headerRight: () => (
-            <View style={styles.headerIcons}>
-              <BasketIcon />
-              <HeaderIcon icon="person" label="Profile" onPress={() => router.push("/profile")} />
-            </View>
-          ),
-        }}
-      />
       <Pressable
         role="button"
         aria-label="Search coffees"
@@ -83,7 +66,6 @@ const useStyles = themed((c) =>
   StyleSheet.create({
     container: { paddingTop: 16, paddingBottom: 64, gap: 72 },
     message: { paddingHorizontal: GUTTER, gap: 16 },
-    headerIcons: { flexDirection: "row", gap: 8 },
     // Sits closer to the spotlight than the sections sit to each other.
     search: {
       flexDirection: "row",

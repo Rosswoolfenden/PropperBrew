@@ -67,7 +67,7 @@ export function OrderBar({
 }) {
   const styles = useStyles();
   const insets = useSafeAreaInsets();
-  const { session } = useSession();
+  const { session, ready } = useSession();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [added, setAdded] = useState<string | null>(null);
@@ -124,7 +124,8 @@ export function OrderBar({
           <Button
             // Short, like "Order · £14.00", so it fits beside the stepper on a phone.
             label={add.isPending ? "Adding…" : `Add · ${price}`}
-            disabled={add.isPending}
+            // Until the stored session is read, we can't tell signed in from signed out.
+            disabled={!ready || add.isPending}
             onPress={addToBasket}
             style={{ flex: 1 }}
           />

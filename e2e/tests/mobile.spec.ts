@@ -76,21 +76,37 @@ test.describe("discover", () => {
     await expect(arrivals.nth(2)).toContainText("Cerrado Pulped Natural");
   });
 
-  test("puts scan, shelf, basket and profile in the top bar, clear of the title", async ({ page }) => {
+  test("tabs: Explore, Journal, Basket and Profile, with scan in the header", async ({ page }) => {
     await page.goto("/");
-    const title = page.getByText("PropperBrew", { exact: true });
-    await expect(title).toBeVisible();
-    const icons = ["Scan a bag", "My shelf", "Basket, 0 items", "Profile"].map((name) => page.getByRole("button", { name }));
-    const t = (await title.boundingBox())!;
-    for (const icon of icons) {
-      const b = (await icon.boundingBox())!;
-      expect(b.x + b.width <= t.x || b.x >= t.x + t.width, "icon overlaps the title").toBe(true);
-    }
-    await page.getByRole("button", { name: "My shelf" }).click();
-    await expect(page).toHaveURL("/shelf");
-    await page.goBack();
-    await page.getByRole("button", { name: "Scan a bag" }).click();
+    const tabs = page.getByRole("tablist");
+    await expect(tabs.getByRole("tab")).toHaveText([/Explore/, /Journal/, /Basket/, /Profile/]);
+    await expect(tabs.getByRole("tab", { name: "Explore" })).toHaveAttribute("aria-selected", "true");
+    expect(await style(tabs.getByRole("tab", { name: "Explore" }).getByText("Explore"), "color")).toBe(rgb.primary);
+    await expect(page.getByRole("heading", { name: "PropperBrew" })).toBeVisible();
+
+    await tabs.getByRole("tab", { name: "Journal" }).click();
+    await expect(page).toHaveURL("/journal");
+    await expect(page.getByRole("heading", { name: "Journal" })).toBeVisible();
+    await tabs.getByRole("tab", { name: "Basket, 0 items" }).click();
+    await expect(page).toHaveURL("/basket");
+    await tabs.getByRole("tab", { name: "Profile" }).click();
+    await expect(page).toHaveURL("/profile");
+    await tabs.getByRole("tab", { name: "Explore" }).click();
+    await expect(page).toHaveURL("/");
+    await page.getByRole("button", { name: "Scan a bag" }).filter({ visible: true }).click();
     await expect(page).toHaveURL("/scan");
+  });
+
+  test("the basket tab counts what's in the basket", async ({ page }) => {
+    clearOrders(seed.alice.id);
+    await signIn(page);
+    await page.goto(`/bean/${seed.kochere.roasterSlug}/${seed.kochere.slug}`);
+    await page.getByRole("button", { name: "Add · £14.00" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Added" })).toBeVisible();
+    await page.goto("/");
+    await expect(page.getByRole("tab", { name: "Basket, 1 item" })).toBeVisible();
+    await expect(page.getByRole("tablist").getByText("1", { exact: true })).toBeVisible();
+    clearOrders(seed.alice.id);
   });
 
   test("shows the coffee photos", async ({ page }) => {
@@ -583,7 +599,7 @@ test.describe("reviews", () => {
 
   test("from the shelf's prompt to a posted review", async ({ page }) => {
     await signIn(page);
-    await page.goto("/shelf");
+    await page.goto("/journal");
     // Only Cerrado (at its peak, not yet reviewed) gets the prompt.
     const prompts = page.getByRole("link", { name: /^How was .*\? Review it$/ });
     await expect(prompts).toHaveCount(1);
@@ -606,7 +622,7 @@ test.describe("reviews", () => {
     await page.getByLabel("Your notes").fill("Nutty and sweet, great in a flat white.");
     await page.getByRole("button", { name: "Post review" }).click();
     // Posting closes the review and returns to where you came from (and the request has finished).
-    await expect(page).toHaveURL("/shelf");
+    await expect(page).toHaveURL("/journal");
 
     // On the coffee: the new rating, sensory profile and review.
     await page.goto(cerradoPath);
@@ -619,7 +635,7 @@ test.describe("reviews", () => {
     await expect(reviews.getByRole("button", { name: "Edit your review" })).toBeVisible();
 
     // And the shelf stops asking.
-    await page.goto("/shelf");
+    await page.goto("/journal");
     await expect(page.getByText(seed.cerrado.name)).toBeVisible();
     await expect(page.getByRole("link", { name: /^How was .*\? Review it$/ })).toHaveCount(0);
   });
@@ -644,7 +660,7 @@ test.describe("profile", () => {
 
   test("signed out, the top bar's profile asks you to sign in", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Profile" }).click();
+    await page.getByRole("tab", { name: "Profile" }).click();
     await expect(page).toHaveURL("/profile");
     await expect(page.getByRole("button", { name: "Sign in to see your profile" })).toBeVisible();
   });
@@ -719,7 +735,7 @@ test.describe("basket and checkout", () => {
   test("add coffees, check out, pay on Stripe's page and see the order", async ({ page }) => {
     await signIn(page);
     await page.goto("/");
-    await expect(page.getByRole("button", { name: "Basket, 0 items" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Basket, 0 items" })).toBeVisible();
 
     await page.goto(kochere);
     await page.getByRole("button", { name: "More" }).click();
@@ -783,7 +799,7 @@ test.describe("basket and checkout", () => {
 
 test.describe("shelf", () => {
   test("asks signed-out users to sign in, then shows the sign-in form", async ({ page }) => {
-    await page.goto("/shelf");
+    await page.goto("/journal");
     const cta = page.getByRole("button", { name: "Sign in to see your shelf" });
     await expect(cta).toBeVisible({ timeout: 30_000 }); // react-query retries the 401 before erroring
     await cta.click();
@@ -800,7 +816,7 @@ test.describe("shelf", () => {
     await expect(page.getByText("PROPPERBREW", { exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "Close" }).click();
-    await expect(page).toHaveURL("/shelf");
+    await expect(page).toHaveURL("/journal");
   });
 
   test("signing in through the form shows your shelf", async ({ page }) => {
@@ -813,14 +829,14 @@ test.describe("shelf", () => {
       .poll(() => page.evaluate(() => Object.keys(localStorage).some((k) => k.endsWith("-auth-token"))))
       .toBe(true);
     // ...that the shelf then loads with.
-    await page.goto("/shelf");
+    await page.goto("/journal");
     await expect(page.getByText(seed.soldOut.name)).toBeVisible();
     await expect(page.getByText(/^Day 10 post-roast$/).first()).toBeVisible();
   });
 
   test("lists the signed-in user's bags with their rest state", async ({ page }) => {
     await signIn(page);
-    await page.goto("/shelf");
+    await page.goto("/journal");
     await expect(page.getByText(seed.inStock.name).first()).toBeVisible();
     await expect(page.getByText(/^Day 10 post-roast$/).first()).toBeVisible();
     await expect(page.getByText(seed.soldOut.name)).toBeVisible();

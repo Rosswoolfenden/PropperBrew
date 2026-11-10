@@ -194,7 +194,7 @@ const cases: [name: string, run: (d: Device) => Promise<void>][] = [
   [
     "shelf: signed out offers sign in",
     async (d) => {
-      await d.launch("/shelf");
+      await d.launch("/journal");
       // react-query retries the 401 a few times first.
       await d.expect(["Sign in to see your shelf"], 30_000);
     },
@@ -256,6 +256,19 @@ const cases: [name: string, run: (d: Device) => Promise<void>][] = [
       await d.scrollTo("Report ben's review", aboveOrderBar);
       await d.tap("Report ben's review");
       await d.expect(["The Ritual Awaits"]);
+    },
+  ],
+  [
+    "tabs: Journal and Profile from the tab bar",
+    async (d) => {
+      await d.launch("/");
+      await d.expect(["Roaster spotlight", "Explore", "Journal", "Profile"], 60_000);
+      await d.tap("Journal");
+      await d.expect(["Sign in to see your shelf"], 30_000);
+      await d.tap("Profile");
+      await d.expect(["Sign in to see your profile"]);
+      await d.tap("Explore");
+      await d.expect(["Roaster spotlight"]);
     },
   ],
   [
