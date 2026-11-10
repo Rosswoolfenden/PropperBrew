@@ -7,7 +7,7 @@ import { SignJWT } from "jose";
 import { env } from "../env";
 import { db } from "./db";
 
-async function serviceRoleToken(): Promise<string> {
+export async function serviceRoleToken(): Promise<string> {
   if (env.SUPABASE_SERVICE_ROLE_KEY) return env.SUPABASE_SERVICE_ROLE_KEY;
   if (!env.SUPABASE_JWT_SECRET) throw new Error("Set SUPABASE_SERVICE_ROLE_KEY to use the auth admin API");
   // Short-lived and only ever sent to our own auth service.

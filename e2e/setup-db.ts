@@ -5,8 +5,9 @@
  * background jobs query the database as soon as it boots.
  */
 import { execFileSync } from "node:child_process";
+import { rmSync } from "node:fs";
 import { join } from "node:path";
-import { apiUrl, encryptToken, jwtSecret, ports, seed, sql } from "./fixtures";
+import { apiEnv, apiUrl, encryptToken, jwtSecret, ports, seed, sql } from "./fixtures";
 
 const repo = join(import.meta.dirname, "..");
 const compose = (...args: string[]) =>
@@ -26,6 +27,7 @@ const compose = (...args: string[]) =>
   });
 
 compose("down", "--volumes", "--remove-orphans");
+rmSync(apiEnv.UPLOADS_DIR, { recursive: true, force: true });
 compose("up", "--detach", "--wait", "db", "mailpit", "auth", "gateway");
 compose("run", "--rm", "migrate");
 // The roaster that takes payment here needs a Shopify token, so paid orders can be created in its

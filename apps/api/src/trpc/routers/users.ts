@@ -32,6 +32,7 @@ export const usersRouter = router({
           tastingNotes: reviews.tastingNotes,
           body: reviews.body,
           flavourScores: reviews.flavourScores,
+          photoUrl: reviews.photoUrl,
           createdAt: reviews.createdAt,
           bean,
           roaster,

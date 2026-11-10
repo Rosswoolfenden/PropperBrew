@@ -28,7 +28,8 @@ export const CreateReviewInput = z.object({
   tastingNotes: z.array(z.string().trim().min(1).max(40)).max(12).default([]),
   body: z.string().trim().max(4000).optional(),
   flavourScores: FlavourScores.optional(),
-  photoUrl: z.url().optional(),
+  /** One of their own uploaded photos (kind "review"); left out to have none. */
+  photoUrl: z.url().nullable().optional(),
   brewMethod: BrewMethod.optional(),
 });
 export type CreateReviewInput = z.infer<typeof CreateReviewInput>;
@@ -145,6 +146,8 @@ export const DELETE_ACCOUNT_PHRASE = "delete my account";
 
 /** Your own profile: how you appear next to your reviews and recipes. */
 export const UserProfileInput = z.object({
+  /** One of their own uploaded photos (kind "avatar"), or null to remove it. */
+  avatarUrl: z.url().nullable().optional(),
   displayName: optionalText(60),
   bio: optionalText(160),
   defaultGrinder: optionalText(80),
@@ -169,6 +172,8 @@ export const RoasterProfileInput = z.object({
     .nullable(),
   /** Must be one of the roaster's own coffee photos (checked by the API). */
   heroImageUrl: z.url().nullable(),
+  /** A logo the team uploaded (kind "logo"), or null for none. */
+  logoUrl: z.url().nullable().optional(),
 });
 export type RoasterProfileInput = z.input<typeof RoasterProfileInput>;
 
@@ -195,3 +200,9 @@ export const ReportInput = z.object({
     .optional(),
 });
 export type ReportInput = z.input<typeof ReportInput>;
+
+/** What a photo is for, which decides how it's sized. */
+export const UPLOAD_KINDS = ["avatar", "review", "logo"] as const;
+export type UploadKind = (typeof UPLOAD_KINDS)[number];
+/** Largest photo we take, before resizing. */
+export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;

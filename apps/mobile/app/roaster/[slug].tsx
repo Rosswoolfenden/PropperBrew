@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import { Link, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
 import { formatPriceFrom, humanize, notesSentence, radius } from "@propperbrew/shared";
 import { fonts, themed, useColors } from "@/theme";
 import { useTRPC } from "@/trpc";
@@ -34,6 +34,7 @@ export default function RoasterScreen() {
           style={[StyleSheet.absoluteFill, { borderRadius: radius.xl }]}
         />
         <View style={styles.heroText}>
+          {r.logoUrl ? <Image source={{ uri: r.logoUrl }} accessibilityLabel={`${r.name} logo`} style={styles.logo} resizeMode="contain" /> : null}
           {r.establishedYear ? <Text style={[styles.established, { color: ink }]}>Established {r.establishedYear}</Text> : null}
           <Text role="heading" style={[styles.name, { color: ink }]}>
             {r.name}
@@ -101,6 +102,7 @@ export default function RoasterScreen() {
 const useStyles = themed((c) =>
   StyleSheet.create({
     container: { padding: GUTTER, paddingBottom: 64, gap: 48 },
+    logo: { width: 64, height: 64, borderRadius: radius.lg, backgroundColor: "#fff", marginBottom: 8 },
     heroText: { position: "absolute", left: 28, right: 28, bottom: 28, gap: 8, alignItems: "flex-start" },
     established: { fontFamily: fonts.label, fontSize: 10, letterSpacing: 2, textTransform: "uppercase", opacity: 0.85 },
     name: { fontFamily: fonts.headline, fontSize: 36, lineHeight: 40, letterSpacing: -1.5 },

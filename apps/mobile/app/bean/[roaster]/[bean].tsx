@@ -193,6 +193,7 @@ export default function BeanScreen() {
                 </View>
               )}
               {r.body && <Body muted>{r.body}</Body>}
+              {r.photoUrl && <Frame uri={r.photoUrl} aspectRatio={4 / 3} style={{ maxWidth: 360 }} />}
               <ReportButton targetType="review" targetId={r.id} what={`${r.user.username}'s review`} ownerUsername={r.user.username} />
             </View>
           ))}

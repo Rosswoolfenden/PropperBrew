@@ -39,6 +39,7 @@ export default async function RoasterPage({ params }: { params: Params }) {
       <div className="roaster-hero frame">
         {r.heroImageUrl && <img src={r.heroImageUrl} alt="" />}
         <div className="roaster-hero-text">
+          {r.logoUrl && <img className="roaster-logo" src={r.logoUrl} alt={`${r.name} logo`} />}
           {r.establishedYear && <p className="eyebrow">Established {r.establishedYear}</p>}
           <h1 className="display">{r.name}</h1>
           {r.city && (

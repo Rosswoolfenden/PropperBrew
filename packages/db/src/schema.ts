@@ -22,6 +22,7 @@ import {
   ORDER_STATUSES,
   REPORT_REASONS,
   REPORT_TARGETS,
+  UPLOAD_KINDS,
   PROCESSES,
   ROAST_LEVELS,
   ROASTER_ROLES,
@@ -303,6 +304,21 @@ export const shelfEntries = pgTable(
     ...timestamps,
   },
   (t) => [index("shelf_entries_user_idx").on(t.userId, t.finishedAt)],
+);
+
+/** Photos people upload (avatars, review photos, roaster logos). Attaching one checks it's theirs. */
+export const uploads = pgTable(
+  "uploads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: UPLOAD_KINDS }).notNull(),
+    url: text("url").notNull().unique(),
+    ...timestamps,
+  },
+  (t) => [index("uploads_user_idx").on(t.userId, t.kind)],
 );
 
 /**

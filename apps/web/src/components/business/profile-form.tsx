@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import { RoasterProfileInput } from "@propperbrew/shared";
 import { refreshRoasterPages } from "@/app/[roaster]/actions";
 import { useTRPC } from "@/app/providers";
+import { PhotoPicker } from "../photo-picker";
 import type { RouterOutputs } from "@/lib/trpc";
 
 type Roaster = RouterOutputs["business"]["me"]["roasters"][number];
@@ -30,6 +31,7 @@ export function ProfileForm({ roaster }: { roaster: Roaster }) {
     address: roaster.address ?? "",
     websiteUrl: roaster.websiteUrl ?? "",
     heroImageUrl: roaster.heroImageUrl,
+    logoUrl: roaster.logoUrl,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
@@ -91,6 +93,8 @@ export function ProfileForm({ roaster }: { roaster: Roaster }) {
       </div>
       {field("address", "Roastery address", <input value={form.address} onChange={set("address")} placeholder="12 Call Lane, Leeds" aria-invalid={!!errors.address} />)}
       {field("websiteUrl", "Website", <input type="url" value={form.websiteUrl} onChange={set("websiteUrl")} placeholder="https://your-roastery.co.uk" aria-invalid={!!errors.websiteUrl} />)}
+
+      <PhotoPicker kind="logo" label="Logo" value={form.logoUrl} onChange={(logoUrl) => (setForm((f) => ({ ...f, logoUrl })), setSaved(false))} />
 
       <fieldset className="hero-picker">
         <legend className="eyebrow">Hero photo</legend>

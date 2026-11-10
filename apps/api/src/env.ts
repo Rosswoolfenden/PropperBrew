@@ -29,6 +29,13 @@ const Env = z
     /** In-app checkout (Stripe Connect). Without both, coffees are ordered on the roaster's own Shopify store. */
     STRIPE_SECRET_KEY: z.string().optional(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
+    /**
+     * Where uploaded photos go: a folder served by the API ("local", for development and the
+     * tests), or a public Supabase Storage bucket ("supabase", in production).
+     */
+    UPLOADS_DRIVER: z.enum(["local", "supabase"]).default("local"),
+    UPLOADS_DIR: z.string().default("./uploads"),
+    UPLOADS_BUCKET: z.string().default("uploads"),
     /** Tests only: talk to a fake Stripe at this origin (e2e/fake-stripe.ts). Refused in production. */
     STRIPE_API_BASE: z.url().optional(),
   })

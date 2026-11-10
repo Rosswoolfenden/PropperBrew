@@ -4,6 +4,7 @@ import { Link } from "expo-router";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { ProfileScreen } from "@/profile";
+import { PhotoField } from "@/photo";
 import { useSession } from "@/session";
 import { useTRPC, type RouterOutputs } from "@/trpc";
 import { fonts, useColors } from "@/theme";
@@ -64,6 +65,7 @@ function EditProfile({ profile, onDone }: { profile: NonNullable<RouterOutputs["
     defaultGrinder: profile.defaultGrinder ?? "",
   });
   const [method, setMethod] = useState<BrewMethod | null>(profile.defaultBrewMethod);
+  const [avatarUrl, setAvatarUrl] = useState(profile.avatarUrl);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const save = useMutation(
     trpc.me.update.mutationOptions({
@@ -85,12 +87,13 @@ function EditProfile({ profile, onDone }: { profile: NonNullable<RouterOutputs["
       return setErrors(found);
     }
     setErrors({});
-    save.mutate(result.data);
+    save.mutate({ ...result.data, avatarUrl });
   };
   const set = (key: keyof typeof form) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
 
   return (
     <View role="form" aria-label="Edit profile" style={styles.form}>
+      <PhotoField kind="avatar" label="Profile photo" value={avatarUrl} onChange={setAvatarUrl} round />
       <Field label="Name" value={form.displayName} onChangeText={set("displayName")} placeholder="How you'd like to be shown" error={errors.displayName} />
       <Field label="About you" value={form.bio} onChangeText={set("bio")} placeholder="In search of the perfect Ethiopian heirloom." error={errors.bio} />
       <Field label="Grinder" value={form.defaultGrinder} onChangeText={set("defaultGrinder")} placeholder="Comandante C40" error={errors.defaultGrinder} />

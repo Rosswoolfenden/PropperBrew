@@ -2,6 +2,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { coffeeBeans, profiles, reviews, type Db } from "@propperbrew/db";
 import { CreateReviewInput, ratingFromDb, ratingToDb, SENSORY_DIMENSIONS } from "@propperbrew/shared";
+import { assertOwnUpload } from "../../uploads/own";
 import { limitedProcedure, protectedProcedure, publicProcedure, router } from "../init";
 
 /** Recompute the bean's rolling aggregates. Cheap at our scale; move to a trigger if it isn't. */
@@ -55,6 +56,13 @@ export const reviewsRouter = router({
 
   /** One review per user per bean; re-submitting edits it. */
   upsert: limitedProcedure("review", 20).input(CreateReviewInput).mutation(async ({ ctx, input }) => {
+    if (input.photoUrl) {
+      const current = await ctx.db.query.reviews.findFirst({
+        where: and(eq(reviews.userId, ctx.user.id), eq(reviews.coffeeBeanId, input.coffeeBeanId)),
+        columns: { photoUrl: true },
+      });
+      if (input.photoUrl !== current?.photoUrl) await assertOwnUpload(ctx.db, ctx.user.id, input.photoUrl, "review");
+    }
     const values = {
       userId: ctx.user.id,
       coffeeBeanId: input.coffeeBeanId,
@@ -63,7 +71,8 @@ export const reviewsRouter = router({
       body: input.body,
       // Nothing scored is "no sensory profile", not an empty one.
       flavourScores: input.flavourScores && Object.values(input.flavourScores).some((v) => v !== undefined) ? input.flavourScores : null,
-      photoUrl: input.photoUrl,
+      // Leaving the photo out of an edit removes it.
+      photoUrl: input.photoUrl ?? null,
       brewMethod: input.brewMethod,
     };
     const { userId: _u, coffeeBeanId: _b, ...update } = values;

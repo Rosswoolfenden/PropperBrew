@@ -93,6 +93,13 @@ Schema changes: edit `packages/db/src/schema.ts`, run `pnpm db:generate`, then `
   - add the website's `/welcome`, `/reset-password` and `/account` pages to the redirect URLs
   - keep the minimum password length at 8
 
+**Photos.** People can add a profile photo, a photo to a review, and (roasters) a logo, on the website and in the app (from the photo library).
+
+- *Upload.* Photos go to `POST /uploads?kind=avatar|review|logo` (signed in, up to 10 MB, 30 a minute). The API re-encodes each one with sharp: turned the right way up, resized (avatars cropped to 512×512, logos fitted in 512×512, review photos within 1600px), and saved as WebP. Nothing else survives, so no EXIF and no location from a phone camera.
+- *Ownership.* Every upload is recorded in `uploads`. A photo can only be put on a profile, review or roaster page by the person who uploaded it, so none of them can point at someone else's photo or anywhere on the web.
+- *Storage.* In development and the tests the files sit in a folder the API serves at `/uploads/*` (`UPLOADS_DIR`; a Docker volume in the preview). In production, set `UPLOADS_DRIVER=supabase` to use a public Supabase Storage bucket (`UPLOADS_BUCKET`, default `uploads`).
+- *Deleting an account* removes its photos too.
+
 **Reports.** Reviews, recipes and profiles have a Report button on the website and in the app. You pick a reason (spam, offensive, misleading or something else) and can add a note. Reports go into the `reports` table with status `open`, one per person per post (reporting again updates it). It isn't shown on your own posts, and the API refuses reports of your own posts. There's no moderation screen yet. To see what's waiting:
 
 ```sql
@@ -162,5 +169,4 @@ ANDROID_HOME=~/Library/Android/sdk pnpm test:android
 - **Checkout against real Stripe.** Every test runs against `e2e/fake-stripe.ts`. Before taking real money, run the flow once with Stripe test keys and the Stripe CLI (`stripe listen --forward-to localhost:4000/stripe/webhook`), and check the Connect settings (Express accounts, GB) in the Stripe dashboard.
 - Refunds. They're done in Stripe and Shopify by hand.
 - A community recipe form on the website (the app has one).
-- Photo uploads (review photos, roaster logos). Hero photos come from the roaster's synced coffee photos for now.
 - Recommendations: `pgvector` is enabled, but nothing uses embeddings yet.

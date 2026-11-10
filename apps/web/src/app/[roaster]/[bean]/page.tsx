@@ -231,6 +231,7 @@ export default async function BeanPage({ params }: { params: Params }) {
                 </ul>
               )}
               {r.body && <p className="review-body">{r.body}</p>}
+              {r.photoUrl && <img className="review-photo" src={r.photoUrl} alt={`Photo from ${r.user.username}'s review`} loading="lazy" />}
               <ReportButton targetType="review" targetId={r.id} what={`${r.user.username}'s review`} ownerUsername={r.user.username} />
             </div>
           ))}

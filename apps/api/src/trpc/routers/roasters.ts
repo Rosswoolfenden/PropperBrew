@@ -111,6 +111,7 @@ export const roastersRouter = router({
         address: true,
         websiteUrl: true,
         heroImageUrl: true,
+        logoUrl: true,
       },
     });
     if (!roaster) throw new TRPCError({ code: "NOT_FOUND" });

@@ -991,3 +991,39 @@ test.describe("reporting", () => {
     await expect(page).toHaveURL("/sign-in");
   });
 });
+
+test.describe("photos", () => {
+  const photo = new URL("../../apps/api/public/mock/kochere.jpg", import.meta.url).pathname;
+  test.afterAll(() => {
+    sql(`update profiles set avatar_url = null where id = '${seed.alice.id}'`);
+    clearReviews(seed.cerrado.id);
+  });
+
+  test("a profile photo from the photo library", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/profile");
+    await page.getByRole("button", { name: "Edit profile" }).click();
+    const form = page.getByRole("form", { name: "Edit profile" });
+    const [chooser] = await Promise.all([page.waitForEvent("filechooser"), form.getByRole("button", { name: "Choose photo" }).click()]);
+    await chooser.setFiles(photo);
+    await expect(form.getByRole("button", { name: "Change photo" })).toBeVisible();
+    await expect(form.getByRole("img", { name: "Profile photo preview" })).toBeVisible();
+    await form.getByRole("button", { name: "Save profile" }).click();
+    await expect(form).toHaveCount(0);
+    expect(sql(`select avatar_url from profiles where id = '${seed.alice.id}'`)).toMatch(new RegExp(`/uploads/avatar/${seed.alice.id}/[0-9a-f-]+\\.webp$`));
+    await expect(page.locator(`img[src*="/uploads/avatar/${seed.alice.id}/"]`).filter({ visible: true })).toHaveCount(1);
+  });
+
+  test("a review with a photo", async ({ page }) => {
+    await signIn(page);
+    await page.goto(`/review/${seed.cerrado.roasterSlug}/${seed.cerrado.slug}`);
+    await page.getByRole("radio", { name: "5 stars" }).click();
+    const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.getByRole("button", { name: "Choose photo" }).click()]);
+    await chooser.setFiles(photo);
+    await expect(page.getByRole("img", { name: "Your photo (optional) preview" })).toBeVisible();
+    await page.getByRole("button", { name: "Post review" }).click();
+    // Opened straight from a link, posting goes on to the coffee.
+    await expect(page).toHaveURL(`/bean/${seed.cerrado.roasterSlug}/${seed.cerrado.slug}`);
+    await expect(page.getByRole("region", { name: "Reviews" }).locator('img[src*="/uploads/review/"]')).toHaveCount(1);
+  });
+});

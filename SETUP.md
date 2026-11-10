@@ -36,6 +36,7 @@ README, "Local preview"). Tick items off as they're done; when one is, send over
     - set the Site URL to the website
     - add the website's `/welcome`, `/reset-password` and `/account` to the redirect URLs
   - Paste the email templates from `supabase/templates` and the subjects from `compose.yaml` into the email template settings.
+  - In Storage, create a **public** bucket called `uploads`, then set `UPLOADS_DRIVER=supabase` on the API. Profile photos, review photos and logos go there.
 
 - [ ] **Email sending (SMTP)** for confirmation and reset emails, with a provider such as Postmark or Resend.
   - Add their DNS records (SPF, DKIM) to the domain.

@@ -15,6 +15,7 @@ import { connectToken } from "../../business/connect-token";
 import { env } from "../../env";
 import { checkoutEnabled, payoutsReady, requireStripe } from "../../payments/stripe";
 import { limitedProcedure, protectedProcedure, router } from "../init";
+import { assertOwnUpload } from "../../uploads/own";
 import { recipeColumns } from "./recipes";
 
 /** The caller's role at a roaster; anyone else is turned away. */
@@ -57,6 +58,7 @@ export const businessRouter = router({
             address: true,
             websiteUrl: true,
             heroImageUrl: true,
+            logoUrl: true,
             stripeAccountId: true,
             stripePayoutsEnabled: true,
             shippingFlatPence: true,
@@ -209,6 +211,10 @@ export const businessRouter = router({
         columns: { id: true },
       });
       if (!own) throw new TRPCError({ code: "BAD_REQUEST", message: "Pick one of your coffee photos for the hero image." });
+    }
+    if (profile.logoUrl) {
+      const current = await ctx.db.query.roasters.findFirst({ where: eq(roasters.id, roasterId), columns: { logoUrl: true } });
+      if (profile.logoUrl !== current?.logoUrl) await assertOwnUpload(ctx.db, ctx.user.id, profile.logoUrl, "logo");
     }
     const [updated] = await ctx.db.update(roasters).set(profile).where(eq(roasters.id, roasterId)).returning({ slug: roasters.slug });
     return updated!;

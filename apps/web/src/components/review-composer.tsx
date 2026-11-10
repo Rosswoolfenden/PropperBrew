@@ -7,6 +7,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { CreateReviewInput, SENSORY, SENSORY_DIMENSIONS, sensoryLevel, type FlavourScores } from "@propperbrew/shared";
 import { refreshCoffeePage } from "@/app/[roaster]/[bean]/actions";
 import { useSession, useTRPC } from "@/app/providers";
+import { PhotoPicker } from "./photo-picker";
 
 const MAX_NOTES = 12;
 
@@ -34,6 +35,7 @@ export function ReviewComposer({
   const [notes, setNotes] = useState<string[]>([]);
   const [newNote, setNewNote] = useState("");
   const [body, setBody] = useState("");
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [posted, setPosted] = useState(false);
 
@@ -44,6 +46,7 @@ export function ReviewComposer({
     setScores(mine.data.flavourScores ?? {});
     setNotes(mine.data.tastingNotes);
     setBody(mine.data.body ?? "");
+    setPhotoUrl(mine.data.photoUrl);
   }, [open, mine.data]);
 
   const save = useMutation(
@@ -95,7 +98,7 @@ export function ReviewComposer({
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (rating === null) return setError("Choose a star rating.");
-    const input = CreateReviewInput.safeParse({ coffeeBeanId, rating, tastingNotes: notes, body: body.trim() || undefined, flavourScores: scores });
+    const input = CreateReviewInput.safeParse({ coffeeBeanId, rating, tastingNotes: notes, body: body.trim() || undefined, flavourScores: scores, photoUrl });
     if (!input.success) return setError("Check your review and try again.");
     setError(null);
     save.mutate(input.data);
@@ -188,6 +191,8 @@ export function ReviewComposer({
           onChange={(e) => setBody(e.target.value)}
         />
       </label>
+
+      <PhotoPicker kind="review" label="Your photo (optional)" value={photoUrl} onChange={setPhotoUrl} />
 
       {error && (
         <p className="alert alert-error" role="alert">

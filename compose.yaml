@@ -129,6 +129,10 @@ services:
       # In-app checkout is off unless you pass Stripe test keys (see README, "In-app checkout").
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      # Uploaded photos, kept in a volume so they survive rebuilds.
+      UPLOADS_DIR: /app/uploads
+    volumes:
+      - uploads:/app/uploads
     ports:
       - ${API_PORT:-4000}:4000
     depends_on:
@@ -173,3 +177,6 @@ services:
     depends_on:
       api:
         condition: service_healthy
+
+volumes:
+  uploads:

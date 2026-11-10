@@ -117,6 +117,7 @@ export default async function ProfilePage({ params }: { params: Params }) {
                   )}
                   <Stars value={r.rating} />
                   {r.body && <blockquote className="review-body">“{r.body}”</blockquote>}
+                  {r.photoUrl && <img className="review-photo" src={r.photoUrl} alt={`Photo of ${r.bean.name}`} loading="lazy" />}
                 </li>
               );
             })}

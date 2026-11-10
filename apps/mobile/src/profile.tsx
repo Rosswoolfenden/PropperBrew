@@ -6,7 +6,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { fonts, themed } from "./theme";
 import { ReportButton } from "./report";
 import { useTRPC, type RouterOutputs } from "./trpc";
-import { Body, Button, Chip, Eyebrow, GUTTER, Headline, Loading, Stars } from "./ui";
+import { Body, Button, Chip, Eyebrow, Frame, GUTTER, Headline, Loading, Stars } from "./ui";
 
 type Profile = RouterOutputs["users"]["profile"];
 
@@ -135,6 +135,7 @@ function ProfileView({ profile: p, children }: { profile: Profile; children?: Re
                 )}
                 <Stars value={r.rating} />
                 {r.body && <Body style={styles.quote}>“{r.body}”</Body>}
+                {r.photoUrl && <Frame uri={r.photoUrl} aspectRatio={4 / 3} />}
               </View>
             );
           })

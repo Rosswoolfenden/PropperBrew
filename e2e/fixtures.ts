@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { createCipheriv, createHmac, randomBytes } from "node:crypto";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 export const ports = { db: 54329, supabase: 54339, api: 4100, web: 3100, mobile: 8181, fakeShopify: 4199, fakeStripe: 4198, mail: 54349 } as const;
@@ -28,6 +29,8 @@ export const apiEnv = {
   STRIPE_SECRET_KEY: "sk_test_e2e",
   STRIPE_WEBHOOK_SECRET: "whsec_e2e",
   STRIPE_API_BASE: `http://localhost:${ports.fakeStripe}`,
+  // Uploaded photos (wiped by setup-db.ts).
+  UPLOADS_DIR: join(tmpdir(), "propperbrew-e2e-uploads"),
 };
 
 /** NEXT_PUBLIC_* values for the website under test (baked in at build time). */

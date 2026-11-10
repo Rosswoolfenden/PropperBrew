@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useId, useState, type FormEvent } from "react";
 import { BREW_METHOD_LABELS, BREW_METHODS, UserProfileInput, type BrewMethod } from "@propperbrew/shared";
 import { useSession, useTRPC } from "@/app/providers";
+import { PhotoPicker } from "./photo-picker";
 
 const MESSAGES: Record<string, string> = {
   displayName: "Keep your name under 60 characters.",
@@ -51,13 +52,14 @@ export function ProfileEditor({ username }: { username: string }) {
   return <EditForm profile={me} onDone={() => setOpen(false)} />;
 }
 
-type Profile = { displayName: string | null; bio: string | null; defaultGrinder: string | null; defaultBrewMethod: BrewMethod | null };
+type Profile = { avatarUrl: string | null; displayName: string | null; bio: string | null; defaultGrinder: string | null; defaultBrewMethod: BrewMethod | null };
 
 function EditForm({ profile, onDone }: { profile: Profile; onDone: () => void }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const router = useRouter();
   const id = useId();
+  const [avatarUrl, setAvatarUrl] = useState(profile.avatarUrl);
   const [form, setForm] = useState({
     displayName: profile.displayName ?? "",
     bio: profile.bio ?? "",
@@ -85,12 +87,13 @@ function EditForm({ profile, onDone }: { profile: Profile; onDone: () => void })
       return setErrors(found);
     }
     setErrors({});
-    save.mutate(result.data);
+    save.mutate({ ...result.data, avatarUrl });
   };
   const err = (key: string) => errors[key] && <span className="field-error">{errors[key]}</span>;
 
   return (
     <form className="card business-form profile-form" onSubmit={submit} aria-label="Edit profile" noValidate>
+      <PhotoPicker kind="avatar" label="Profile photo" value={avatarUrl} onChange={setAvatarUrl} round />
       <label className="field">
         <span className="eyebrow">Name</span>
         <input value={form.displayName} onChange={set("displayName")} placeholder="How you'd like to be shown" aria-invalid={!!errors.displayName} />

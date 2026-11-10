@@ -15,6 +15,7 @@ import { SensorySlider, StarRating } from "@/review-inputs";
 import { useSession } from "@/session";
 import { fonts, themed, useColors } from "@/theme";
 import { useTRPC } from "@/trpc";
+import { PhotoField } from "@/photo";
 import { Body, Button, Eyebrow, Field, Frame, GUTTER, Headline, Loading } from "@/ui";
 
 const MAX_NOTES = 12;
@@ -38,6 +39,7 @@ export default function ReviewScreen() {
   const [notes, setNotes] = useState<string[]>([]);
   const [newNote, setNewNote] = useState("");
   const [body, setBody] = useState("");
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -49,6 +51,7 @@ export default function ReviewScreen() {
       setScores(mine.data.flavourScores ?? {});
       setNotes(mine.data.tastingNotes);
       setBody(mine.data.body ?? "");
+      setPhotoUrl(mine.data.photoUrl);
     }
     setLoaded(true);
   }, [loaded, mine.isPending, mine.data]);
@@ -60,7 +63,9 @@ export default function ReviewScreen() {
         queryClient.invalidateQueries({ queryKey: trpc.reviews.pathKey() });
         queryClient.invalidateQueries({ queryKey: trpc.beans.pathKey() });
         queryClient.invalidateQueries({ queryKey: trpc.shelf.pathKey() });
-        router.back();
+        // Opened straight from a link there's nothing to go back to: show the coffee, review and all.
+        if (router.canGoBack()) router.back();
+        else router.replace({ pathname: "/bean/[roaster]/[bean]", params: { roaster, bean: beanSlug } });
       },
       onError: () => setError("Couldn't post your review. Please try again."),
     }),
@@ -101,6 +106,7 @@ export default function ReviewScreen() {
       tastingNotes: notes,
       body: body.trim() || undefined,
       flavourScores: scores,
+      photoUrl,
     });
     if (!input.success) return setError("Check your review and try again.");
     setError(null);
@@ -182,6 +188,7 @@ export default function ReviewScreen() {
             maxLength={4000}
             style={{ minHeight: 150, textAlignVertical: "top" }}
           />
+          <PhotoField kind="review" label="Your photo (optional)" value={photoUrl} onChange={setPhotoUrl} />
         </View>
 
         {error && (

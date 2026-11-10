@@ -11,6 +11,7 @@ import { startRestNotificationJob } from "./jobs/rest-notifications";
 import { db } from "./lib/db";
 import { shopifyRoutes } from "./routes/shopify";
 import { stripeRoutes } from "./routes/stripe";
+import { uploadRoutes } from "./routes/uploads";
 import { startOrderSweeper } from "./payments/fulfil";
 import { checkoutEnabled } from "./payments/stripe";
 import { startWebhookSweeper } from "./shopify/webhooks";
@@ -34,6 +35,7 @@ app.use(
 
 app.route("/", shopifyRoutes);
 app.route("/", stripeRoutes);
+app.route("/", uploadRoutes);
 
 app.use(
   "/trpc/*",

@@ -11,6 +11,8 @@ kill_timeout = "30s" # let in-flight webhook enrichment finish; anything unfinis
   PORT = "8080"
   SHOPIFY_API_VERSION = "2026-04"
   PUBLIC_API_URL = "https://api.yourcoffeeapp.co.uk"
+  # Photos go to Supabase Storage (bucket "uploads", public) rather than the machine's disk.
+  UPLOADS_DRIVER = "supabase"
 
 # Secrets (fly secrets set ...): DATABASE_URL, TOKEN_ENCRYPTION_KEY, SUPABASE_URL,
 # SUPABASE_SERVICE_ROLE_KEY, PUBLIC_WEB_URL, SHOPIFY_API_KEY, SHOPIFY_API_SECRET, SHOPIFY_SCOPES,
