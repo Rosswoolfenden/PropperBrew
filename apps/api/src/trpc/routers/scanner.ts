@@ -4,11 +4,11 @@ import { z } from "zod";
 import { coffeeBeans, roasters } from "@propperbrew/db";
 import { env } from "../../env";
 import { readBagPhoto } from "../../enrichment/claude";
-import { protectedProcedure, router } from "../init";
+import { limitedProcedure, router } from "../init";
 
 export const scannerRouter = router({
   /** Photo of a bag → best-matching beans. */
-  scanBag: protectedProcedure
+  scanBag: limitedProcedure("scan", 10)
     .input(
       z.object({
         imageBase64: z.string().max(14_000_000),

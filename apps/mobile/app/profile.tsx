@@ -45,6 +45,9 @@ export default function MyProfileScreen() {
           <Link href="/orders" asChild>
             <Button label="Your orders" icon="receipt-long" variant="secondary" />
           </Link>
+          <Link href="/account" asChild>
+            <Button label="Account settings" icon="manage-accounts" variant="secondary" />
+          </Link>
         </View>
       )}
     </ProfileScreen>

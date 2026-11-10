@@ -37,7 +37,7 @@ export async function markCheckoutPaid(db: Db, checkoutId: string, payment: { pa
       .select({ variantId: orderLines.shopifyVariantRowId })
       .from(orderLines)
       .where(inArray(orderLines.orderId, paidOrders.map((o) => o.id)));
-    if (bought.length > 0) {
+    if (checkout.userId && bought.length > 0) {
       await tx.delete(basketItems).where(and(eq(basketItems.userId, checkout.userId), inArray(basketItems.shopifyVariantRowId, bought.map((b) => b.variantId))));
     }
     return checkout;

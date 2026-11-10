@@ -131,9 +131,11 @@ async function markOrderFulfilled(shopDomain: string, shopifyOrderId: string, st
 
 async function notifyShipped(shopDomain: string, shopifyOrderId: string, trackingUrl: string | null) {
   const order = await findOrder(shopDomain, shopifyOrderId);
-  if (!order) return;
+  // Not ours, or the buyer has since deleted their account.
+  if (!order?.userId) return;
+  const userId = order.userId;
   const [user, roaster] = await Promise.all([
-    db.query.profiles.findFirst({ where: eq(profiles.id, order.userId) }),
+    db.query.profiles.findFirst({ where: eq(profiles.id, userId) }),
     db.query.roasters.findFirst({ where: eq(roasters.id, order.roasterId) }),
   ]);
   if (!user?.expoPushToken) return;

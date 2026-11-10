@@ -7,7 +7,7 @@ import { env } from "../../env";
 import { loadBasket } from "../../payments/basket";
 import { markCheckoutExpired, markCheckoutPaid } from "../../payments/fulfil";
 import { requireStripe, stripe } from "../../payments/stripe";
-import { protectedProcedure, router } from "../init";
+import { limitedProcedure, protectedProcedure, router } from "../init";
 
 /** The email Stripe receipts and Shopify shipping updates go to: the account's. */
 async function emailOf(db: Db, user: { id: string; email?: string }) {
@@ -25,7 +25,7 @@ export const ordersRouter = router({
    * Turn the basket into an order per roaster, and a Stripe Checkout Session to pay for them all.
    * Prices are read again here; nothing the client sends is trusted except the address.
    */
-  start: protectedProcedure.input(StartCheckoutInput).mutation(async ({ ctx, input }) => {
+  start: limitedProcedure("checkout", 20).input(StartCheckoutInput).mutation(async ({ ctx, input }) => {
     if (!stripe) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Checkout isn't available right now." });
     const basket = await loadBasket(ctx.db, ctx.user.id);
     if (basket.hasUnavailable) {

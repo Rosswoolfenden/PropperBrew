@@ -1,6 +1,11 @@
 import type { Session } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
-import { supabase } from "./supabase";
+import { sessionEndedUnasked, signOut, supabase } from "./supabase";
+
+export { signOut };
+
+/** Where email links from the app (confirm your account, reset your password) land: the website. */
+export const webUrl = process.env.EXPO_PUBLIC_WEB_URL ?? "http://localhost:3000";
 
 /** The signed-in Supabase session; `ready` is false until the stored session has been read. */
 export function useSession() {
@@ -21,5 +26,6 @@ export function useSession() {
     };
   }, []);
 
-  return { session, ready };
+  /** Their session ran out or was revoked (not a sign-out they asked for). */
+  return { session, ready, expired: ready && !session && sessionEndedUnasked() };
 }

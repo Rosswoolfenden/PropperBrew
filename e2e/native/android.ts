@@ -226,6 +226,30 @@ const cases: [name: string, run: (d: Device) => Promise<void>][] = [
     },
   ],
   [
+    "sign in: forgot password opens its own screen",
+    async (d) => {
+      await d.launch("/sign-in");
+      await d.expect(["The Ritual Awaits", "Email address"]);
+      await d.tap("Forgot your password?");
+      await d.expect(["Reset your password", "Send reset link"]);
+    },
+  ],
+  [
+    "sign in: create account switches the form",
+    async (d) => {
+      await d.launch("/sign-in");
+      await d.tap(/^create account$/i);
+      await d.expect(["Join the club", "Already have an account?"]);
+    },
+  ],
+  [
+    "account: signed out offers sign in",
+    async (d) => {
+      await d.launch("/account");
+      await d.expect(["Sign in to manage your account"]);
+    },
+  ],
+  [
     "scan screen opens",
     async (d) => {
       await d.launch("/scan");

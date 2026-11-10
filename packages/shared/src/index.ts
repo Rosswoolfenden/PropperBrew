@@ -6,3 +6,4 @@ export * from "./theme";
 export * from "./shopify";
 export * from "./sensory";
 export * from "./checkout";
+export * from "./auth";

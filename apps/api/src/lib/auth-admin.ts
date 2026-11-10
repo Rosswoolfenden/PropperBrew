@@ -1,6 +1,6 @@
 /**
- * The auth service's admin API, for "Continue with Shopify": Shopify vouches for the person, so we
- * find or create their account and hand them a one-time sign-in link.
+ * The auth service's admin API: for "Continue with Shopify" (Shopify vouches for the person, so we
+ * find or create their account and hand them a one-time sign-in link), and for deleting accounts.
  */
 import { sql } from "drizzle-orm";
 import { SignJWT } from "jose";
@@ -18,14 +18,19 @@ async function serviceRoleToken(): Promise<string> {
     .sign(new TextEncoder().encode(env.SUPABASE_JWT_SECRET));
 }
 
-async function admin<T>(path: string, body: unknown): Promise<T> {
+async function admin<T>(path: string, body?: unknown, method = "POST"): Promise<T> {
   const res = await fetch(new URL(`/auth/v1/admin/${path}`, env.SUPABASE_URL), {
-    method: "POST",
+    method,
     headers: { authorization: `Bearer ${await serviceRoleToken()}`, "content-type": "application/json" },
-    body: JSON.stringify(body),
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`Auth admin ${path} failed: ${res.status} ${await res.text()}`);
   return (await res.json()) as T;
+}
+
+/** Delete an account from the auth service. Their profile and everything that cascades from it goes too. */
+export async function deleteAuthUser(userId: string) {
+  await admin(`users/${userId}`, undefined, "DELETE");
 }
 
 /** The account for `email`, creating a confirmed business account if there isn't one. */

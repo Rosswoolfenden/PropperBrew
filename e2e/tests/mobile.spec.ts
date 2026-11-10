@@ -3,7 +3,7 @@
  * data flow; native-only behaviour (camera capture, push) is out of reach here.
  */
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
-import { accessToken, accounts, apiUrl, clearOrders, clearReviews, ports, rgb, seed, sql } from "../fixtures";
+import { accessToken, accounts, apiUrl, clearOrders, clearReviews, createUser, deleteTestUsers, emailTo, ports, rgb, seed, sql, webUrl } from "../fixtures";
 
 const beanPath = `/bean/${seed.roaster.slug}/${seed.inStock.slug}`;
 /** The in-screen headline; the native-stack header renders the same title as a level-1 heading. */
@@ -826,5 +826,126 @@ test.describe("shelf", () => {
     await expect(page.getByText(seed.soldOut.name)).toBeVisible();
     // The add-to-shelf test may have added another undated bag.
     await expect(page.getByText("Add a roast date to track resting").first()).toBeVisible();
+  });
+});
+
+test.describe("accounts", () => {
+  test.afterAll(deleteTestUsers);
+  const unique = (prefix: string) => `${prefix}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}@auth-test.example`;
+
+  async function signInWithForm(page: Page, email: string, password: string) {
+    await page.getByLabel("Email address").fill(email);
+    await page.getByLabel("Password").fill(password);
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  }
+
+  test("a new account is confirmed by email, on the website", async ({ page }) => {
+    const email = unique("appnewbie");
+    await page.goto("/sign-in");
+    await page.getByRole("button", { name: "Create account" }).click();
+    await page.getByLabel("Email address").fill(email);
+    await page.getByLabel("Password").fill("short");
+    await page.getByRole("button", { name: "Create account", exact: true }).click();
+    await expect(page.getByRole("alert")).toHaveText("Use at least 8 characters for your password.");
+    await page.getByLabel("Password").fill("a-long-password");
+    await page.getByRole("button", { name: "Create account", exact: true }).click();
+    await expect(page.getByRole("status")).toContainText(`Check your email. We've sent a link to ${email} to confirm your account, then sign in here.`);
+
+    // Not until it's confirmed.
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await expect(page.getByRole("alert")).toContainText("Confirm your email first");
+    await expect(page.getByRole("button", { name: "Resend the email" })).toBeVisible();
+
+    const { link } = await emailTo(email, "Confirm your PropperBrew account");
+    await page.goto(link!);
+    await expect(page).toHaveURL(new RegExp(`^${webUrl}/welcome`));
+    await expect(page.getByRole("heading", { name: "Welcome to PropperBrew" })).toBeVisible();
+
+    await page.goto(`http://localhost:${ports.mobile}/sign-in`);
+    await signInWithForm(page, email, "a-long-password");
+    await expect(page).toHaveURL("/");
+  });
+
+  test("forgot your password: the link opens the website to choose a new one", async ({ page }) => {
+    const user = await createUser("appforgetful");
+    await page.goto("/sign-in");
+    await page.getByLabel("Email address").fill(user.email);
+    await page.getByRole("button", { name: "Forgot your password?" }).click();
+    await expect(page).toHaveURL(`/forgot-password?email=${encodeURIComponent(user.email)}`);
+    // The sign-in screen stays mounted underneath.
+    await expect(page.getByLabel("Email address").filter({ visible: true })).toHaveValue(user.email);
+    await page.getByRole("button", { name: "Send reset link" }).click();
+    await expect(page.getByRole("status")).toHaveText(
+      `If there's an account for ${user.email}, we've sent it a link. Choose your new password there, then sign in here with it.`,
+    );
+    const { link } = await emailTo(user.email, "Reset your PropperBrew password");
+    await page.goto(link!);
+    await expect(page).toHaveURL(new RegExp(`^${webUrl}/reset-password`));
+    await expect(page.getByRole("form", { name: "Choose a new password" })).toBeVisible();
+  });
+
+  test("signing in from a prompt brings you back to it", async ({ page }) => {
+    const user = await createUser("appreturner");
+    await page.goto("/basket");
+    await page.getByRole("button", { name: "Sign in to see your basket" }).click();
+    await expect(page).toHaveURL("/sign-in");
+    await signInWithForm(page, user.email, user.password);
+    await expect(page).toHaveURL("/basket");
+    await expect(page.getByText("Your basket is empty.")).toBeVisible();
+  });
+
+  test("account settings: change password, sign out, delete the account", async ({ page }) => {
+    const user = await createUser("appleaver");
+    await page.goto("/profile");
+    await page.getByRole("button", { name: "Sign in to see your profile" }).click();
+    await signInWithForm(page, user.email, user.password);
+    await expect(page).toHaveURL("/profile");
+    await page.getByRole("button", { name: "Account settings" }).click();
+    await expect(page).toHaveURL("/account");
+
+    const password = page.getByRole("region", { name: "Password" });
+    await password.getByLabel("Current password").fill("wrong-password");
+    await password.getByLabel("New password").fill("another-long-password");
+    await password.getByRole("button", { name: "Change password" }).click();
+    await expect(password.getByRole("alert")).toHaveText("That's not your current password.");
+    await password.getByLabel("Current password").fill(user.password);
+    await password.getByRole("button", { name: "Change password" }).click();
+    await expect(password.getByRole("status")).toHaveText("Your password has been changed.");
+
+    await page.getByRole("region", { name: "Sign out" }).getByRole("button", { name: "Sign out" }).click();
+    await expect(page).toHaveURL("/");
+    await page.goto("/sign-in");
+    // Signing out on purpose isn't "you've been signed out".
+    await expect(page.getByText("You've been signed out.", { exact: false })).toHaveCount(0);
+    await signInWithForm(page, user.email, "another-long-password");
+    await expect(page).toHaveURL("/");
+
+    await page.goto("/account");
+    const danger = page.getByRole("region", { name: "Delete your account" });
+    const remove = danger.getByRole("button", { name: "Delete my account" });
+    await expect(remove).toBeDisabled();
+    await danger.getByLabel("Type “delete my account” to confirm").fill("delete my account");
+    await remove.click();
+    await expect(page).toHaveURL("/");
+    expect(sql(`select count(*) from auth.users where id = '${user.id}'`)).toBe("0");
+
+    await page.goto("/sign-in");
+    await signInWithForm(page, user.email, "another-long-password");
+    await expect(page.getByRole("alert")).toHaveText("That email and password don't match an account.");
+  });
+
+  test("a session that runs out says so on the sign-in screen", async ({ page }) => {
+    const user = await createUser("appsleepy");
+    await page.goto("/sign-in");
+    await signInWithForm(page, user.email, user.password);
+    await expect(page).toHaveURL("/");
+    await page.evaluate(() => {
+      const key = Object.keys(localStorage).find((k) => k.endsWith("-auth-token"))!;
+      const session = JSON.parse(localStorage.getItem(key)!);
+      localStorage.setItem(key, JSON.stringify({ ...session, expires_at: 1, refresh_token: "revoked" }));
+    });
+    await page.goto("/sign-in");
+    await expect(page.getByRole("status")).toHaveText("You've been signed out. Sign in again to carry on.");
   });
 });

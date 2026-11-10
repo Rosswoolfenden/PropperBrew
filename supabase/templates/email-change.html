@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Confirm your new email</title>
+  </head>
+  <body style="margin:0;padding:0;background:#fcf9f4;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fcf9f4;">
+      <tr>
+        <td align="center" style="padding:40px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+            <tr>
+              <td style="font:800 22px/1 'Helvetica Neue',Arial,sans-serif;letter-spacing:-0.5px;color:#334537;padding-bottom:32px;">PropperBrew</td>
+            </tr>
+            <tr>
+              <td style="background:#ffffff;border-radius:12px;padding:36px 32px;">
+                <h1 style="margin:0 0 16px;font:800 28px/1.15 'Helvetica Neue',Arial,sans-serif;letter-spacing:-0.5px;color:#334537;">Confirm your new email</h1>
+                <p style="margin:0 0 28px;font:18px/1.55 Georgia,'Times New Roman',serif;color:#434843;">Confirm {{ .NewEmail }} as the email address for your PropperBrew account.</p>
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="border-radius:6px;background:#4a5d4e;">
+                      <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:16px 28px;font:700 13px/1 'Helvetica Neue',Arial,sans-serif;letter-spacing:1.5px;text-transform:uppercase;color:#ffffff;text-decoration:none;">Confirm new email</a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:28px 0 0;font:15px/1.55 Georgia,'Times New Roman',serif;color:#737872;">Until you confirm, you keep signing in with {{ .Email }}. If you didn&rsquo;t ask for this, ignore this email.</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding-top:24px;font:12px/1.5 'Helvetica Neue',Arial,sans-serif;color:#737872;">Specialty coffee from independent UK roasters.</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

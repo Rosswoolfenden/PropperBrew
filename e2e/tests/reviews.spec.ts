@@ -1,6 +1,6 @@
 /** Reviews on the website: the coffee's sensory profile, writing a review, and editing yours. */
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { accounts, clearReviews, seed } from "../fixtures";
+import { accounts, clearReviews, createUser, deleteTestUsers, seed } from "../fixtures";
 
 const beanPath = `/${seed.roaster.slug}/${seed.inStock.slug}`;
 const kocherePath = `/${seed.kochere.roasterSlug}/${seed.kochere.slug}`;
@@ -17,7 +17,10 @@ async function signIn(page: Page, email: string, password: string) {
   await form.getByRole("button", { name: "Sign in", exact: true }).click();
 }
 
-test.afterAll(() => clearReviews(seed.kochere.id));
+test.afterAll(() => {
+  clearReviews(seed.kochere.id);
+  deleteTestUsers();
+});
 
 test("a coffee shows its community sensory profile", async ({ page }) => {
   await page.goto(beanPath);
@@ -50,13 +53,9 @@ test("the sign-in return path stays on this site", async ({ page }) => {
 
 test("write a review and see it on the coffee", async ({ page }) => {
   // A brand-new account, so this is its first review of Kochere.
+  const user = await createUser("reviewer");
   await page.goto("/sign-in");
-  const form = page.locator("form").filter({ has: page.getByLabel("Password", { exact: true }) });
-  await form.getByRole("button", { name: "Create account" }).click();
-  const email = `reviewer-${Date.now().toString(36)}@example.com`;
-  await form.getByLabel("Email address", { exact: true }).fill(email);
-  await form.getByLabel("Password", { exact: true }).fill("a-long-password");
-  await form.getByRole("button", { name: "Create account", exact: true }).click();
+  await signIn(page, user.email, user.password);
   await expect(page).toHaveURL("/");
 
   await page.goto(kocherePath);
@@ -88,7 +87,7 @@ test("write a review and see it on the coffee", async ({ page }) => {
   await expect(reviewsSection(page).getByLabel("Sensory profile").locator(".sensory-bar")).toHaveText([/Acidity\s*Gentle/]);
   const posted = reviewsSection(page).locator(".review");
   await expect(posted).toHaveCount(1);
-  await expect(posted).toContainText(email.split("@")[0]!.replace(/-/g, ""));
+  await expect(posted).toContainText(user.email.split("@")[0]!.replace(/-/g, ""));
   await expect(posted.getByRole("img", { name: "3.0 out of 5" })).toBeVisible();
   await expect(posted.getByRole("list", { name: "Tasted" })).toHaveText(/Jasmine\s*Lemon/);
   await expect(posted).toContainText("Floral and light, lovely as it cools.");

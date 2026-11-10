@@ -17,6 +17,7 @@ const compose = (...args: string[]) =>
       ...process.env,
       DB_PORT: String(ports.db),
       SUPABASE_PORT: String(ports.supabase),
+      MAIL_PORT: String(ports.mail),
       JWT_SECRET: jwtSecret,
       // Seeded photo URLs point at the API under test.
       API_PORT: String(ports.api),
@@ -25,7 +26,7 @@ const compose = (...args: string[]) =>
   });
 
 compose("down", "--volumes", "--remove-orphans");
-compose("up", "--detach", "--wait", "db", "auth", "gateway");
+compose("up", "--detach", "--wait", "db", "mailpit", "auth", "gateway");
 compose("run", "--rm", "migrate");
 // The roaster that takes payment here needs a Shopify token, so paid orders can be created in its
 // (fake) store. Encrypted with the test key, which seed.sql can't do.

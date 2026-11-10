@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { AuthForm } from "@/components/auth-form";
+import { safeNext } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Sign in", robots: { index: false } };
-
-/** Only same-site paths, so a crafted link can't send people elsewhere after signing in. */
-const safeNext = (next: string | undefined) => (next && /^\/(?!\/)[\w\-/]*$/.test(next) ? next : "/");
 
 export default async function SignInPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const { next } = await searchParams;

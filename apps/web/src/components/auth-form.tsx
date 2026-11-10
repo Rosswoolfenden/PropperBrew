@@ -1,14 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import type { AccountType } from "@propperbrew/shared";
 import { useSession } from "@/app/providers";
+import { authMessage, MIN_PASSWORD, siteUrl } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 
-const MIN_PASSWORD = 8;
+type Message = { tone: "error" | "info"; text: string; resend?: boolean };
 
-/** Email + password sign-in, or account creation, for coffee drinkers or roasters. */
+/** Email + password sign-in, or account creation (confirmed by email), for coffee drinkers or roasters. */
 export function AuthForm({ accountType, redirectTo }: { accountType: AccountType; redirectTo: string }) {
   const router = useRouter();
   const { session, ready } = useSession();
@@ -16,7 +18,9 @@ export function AuthForm({ accountType, redirectTo }: { accountType: AccountType
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ tone: "error" | "info"; text: string } | null>(null);
+  const [message, setMessage] = useState<Message | null>(null);
+  // The confirmation link brings them back here, signed in.
+  const confirmUrl = () => siteUrl(redirectTo);
 
   // Already signed in (or just signed in): carry on.
   useEffect(() => {
@@ -33,19 +37,23 @@ export function AuthForm({ accountType, redirectTo }: { accountType: AccountType
     const result =
       mode === "signIn"
         ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password, options: { data: { account_type: accountType } } });
+        : await supabase.auth.signUp({ email, password, options: { data: { account_type: accountType }, emailRedirectTo: confirmUrl() } });
     setBusy(false);
     if (result.error) {
-      const text =
-        result.error.code === "invalid_credentials"
-          ? "That email and password don't match an account."
-          : result.error.code === "user_already_exists"
-            ? "There's already an account with that email. Sign in instead."
-            : result.error.message;
-      return setMessage({ tone: "error", text });
+      return setMessage({ tone: "error", text: authMessage(result.error), resend: result.error.code === "email_not_confirmed" });
     }
-    // With email confirmation on (as in production), sign-up returns no session yet.
-    if (!result.data.session) setMessage({ tone: "info", text: "Check your email to confirm your account, then sign in." });
+    if (!result.data.session) {
+      // The auth service answers the same for an address that's already registered, so this
+      // doesn't reveal who has an account.
+      setMessage({ tone: "info", text: `Check your email. We've sent a link to ${email} to confirm your account.`, resend: true });
+    }
+  };
+
+  const resend = async () => {
+    setBusy(true);
+    const { error } = await supabase.auth.resend({ type: "signup", email, options: { emailRedirectTo: confirmUrl() } });
+    setBusy(false);
+    setMessage(error ? { tone: "error", text: authMessage(error) } : { tone: "info", text: `Sent again. Check ${email} for the link.` });
   };
 
   const signUp = mode === "signUp";
@@ -66,10 +74,23 @@ export function AuthForm({ accountType, redirectTo }: { accountType: AccountType
           onChange={(e) => setPassword(e.target.value)}
         />
       </label>
+      {!signUp && (
+        <Link className="text-button forgot-link" href={`/forgot-password${email ? `?email=${encodeURIComponent(email)}` : ""}`}>
+          Forgot your password?
+        </Link>
+      )}
       {message && (
-        <p className={`alert alert-${message.tone}`} role={message.tone === "error" ? "alert" : "status"}>
+        <div className={`alert alert-${message.tone}`} role={message.tone === "error" ? "alert" : "status"}>
           {message.text}
-        </p>
+          {message.resend && (
+            <>
+              {" "}
+              <button type="button" className="text-button" disabled={busy} onClick={resend}>
+                Resend the email
+              </button>
+            </>
+          )}
+        </div>
       )}
       <button type="submit" className="button" disabled={busy}>
         {busy ? "One moment…" : signUp ? (accountType === "business" ? "Create business account" : "Create account") : "Sign in"}

@@ -7,12 +7,18 @@ import { createTRPCContext } from "@trpc/tanstack-react-query";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import superjson from "superjson";
 import type { AppRouter } from "@propperbrew/api/router";
-import { supabase } from "@/lib/supabase";
+import { hadStoredSession, isSigningOut, supabase } from "@/lib/supabase";
 
 export const { TRPCProvider, useTRPC } = createTRPCContext<AppRouter>();
 
-/** `ready` is false until the stored session (or one arriving in a sign-in link) has been read. */
-const SessionContext = createContext<{ session: Session | null; ready: boolean }>({ session: null, ready: false });
+type Auth = {
+  session: Session | null;
+  /** False until the stored session (or one arriving in a sign-in link) has been read. */
+  ready: boolean;
+  /** Their session ran out or was revoked (not a sign-out they asked for). */
+  expired: boolean;
+};
+const SessionContext = createContext<Auth>({ session: null, ready: false, expired: false });
 export const useSession = () => useContext(SessionContext);
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
@@ -33,12 +39,14 @@ export function Providers({ children }: { children: ReactNode }) {
       ],
     }),
   );
-  const [auth, setAuth] = useState<{ session: Session | null; ready: boolean }>({ session: null, ready: false });
+  const [auth, setAuth] = useState<Auth>({ session: null, ready: false, expired: false });
 
   useEffect(() => {
     // Fires once with the current session (INITIAL_SESSION), then on every change.
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      setAuth({ session, ready: true });
+      // Decided now: by the time React runs the update, a deliberate sign-out has finished.
+      const endedUnasked = (event === "INITIAL_SESSION" && hadStoredSession) || (event === "SIGNED_OUT" && !isSigningOut());
+      setAuth((prev) => ({ session, ready: true, expired: session ? false : endedUnasked || prev.expired }));
       // Per-person data (your account, your roasters) changes with who's signed in.
       if (event === "SIGNED_IN" || event === "SIGNED_OUT") queryClient.invalidateQueries();
     });

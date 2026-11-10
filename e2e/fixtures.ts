@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { createCipheriv, createHmac, randomBytes } from "node:crypto";
 import { join } from "node:path";
 
-export const ports = { db: 54329, supabase: 54339, api: 4100, web: 3100, mobile: 8181, fakeShopify: 4199, fakeStripe: 4198 } as const;
+export const ports = { db: 54329, supabase: 54339, api: 4100, web: 3100, mobile: 8181, fakeShopify: 4199, fakeStripe: 4198, mail: 54349 } as const;
 export const apiUrl = `http://localhost:${ports.api}`;
 export const webUrl = `http://localhost:${ports.web}`;
 /** The auth service, behind the Supabase-style gateway (see compose.yaml). */
@@ -48,6 +48,7 @@ export const accounts = {
 export const appEnv = {
   EXPO_PUBLIC_API_URL: apiUrl,
   EXPO_PUBLIC_SUPABASE_URL: supabaseUrl,
+  EXPO_PUBLIC_WEB_URL: webUrl,
   // Any value works locally; the auth service doesn't check it.
   EXPO_PUBLIC_SUPABASE_ANON_KEY: "e2e-anon-key",
   EXPO_NO_TELEMETRY: "1",
@@ -136,4 +137,59 @@ export function encryptToken(plaintext: string) {
 /** Empty someone's basket and remove their orders, so checkout tests start clean. */
 export function clearOrders(userId: string) {
   sql(`delete from basket_items where user_id = '${userId}'; delete from checkouts where user_id = '${userId}'`);
+}
+
+/** Mailpit, which catches the auth service's email in the tests (see compose.yaml). */
+export const mailUrl = `http://localhost:${ports.mail}`;
+
+/**
+ * The newest email to `to` with this subject, waiting for it to arrive. `link` is the first link
+ * in it (confirm, reset, …), ready to open.
+ */
+export async function emailTo(to: string, subject: string, { after = 0, timeoutMs = 15_000 } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const res = await fetch(`${mailUrl}/api/v1/search?query=${encodeURIComponent(`to:"${to}" subject:"${subject}"`)}`);
+    const { messages } = (await res.json()) as { messages: { ID: string; Created: string }[] };
+    const found = messages.find((m) => new Date(m.Created).getTime() >= after);
+    if (found) {
+      const message = (await (await fetch(`${mailUrl}/api/v1/message/${found.ID}`)).json()) as { Subject: string; HTML: string; Text: string };
+      const href = message.HTML.match(/href="([^"]+)"/)?.[1]?.replace(/&amp;/g, "&");
+      return { subject: message.Subject, html: message.HTML, text: message.Text, link: href ?? null };
+    }
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  throw new Error(`No "${subject}" email to ${to}`);
+}
+
+/** How many emails `to` has had. */
+export async function emailCount(to: string) {
+  const res = await fetch(`${mailUrl}/api/v1/search?query=${encodeURIComponent(`to:"${to}"`)}`);
+  return ((await res.json()) as { messages_count: number }).messages_count;
+}
+
+/** The auth service's admin API, as the service role (the tests share its JWT secret). */
+async function authAdmin(path: string, init: { method: string; body?: unknown }) {
+  const header = b64url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+  const payload = b64url(JSON.stringify({ role: "service_role", exp: Math.floor(Date.now() / 1000) + 300 }));
+  const signature = createHmac("sha256", jwtSecret).update(`${header}.${payload}`).digest("base64url");
+  const res = await fetch(`${supabaseUrl}/auth/v1/admin/${path}`, {
+    method: init.method,
+    headers: { authorization: `Bearer ${header}.${payload}.${signature}`, "content-type": "application/json" },
+    body: init.body === undefined ? undefined : JSON.stringify(init.body),
+  });
+  if (!res.ok) throw new Error(`auth admin ${path}: ${res.status} ${await res.text()}`);
+  return res.json() as Promise<{ id: string }>;
+}
+
+/** A confirmed account that can sign in straight away, with a unique address. */
+export async function createUser(prefix: string, password = "a-long-password") {
+  const email = `${prefix}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}@auth-test.example`;
+  const { id } = await authAdmin("users", { method: "POST", body: { email, password, email_confirm: true } });
+  return { id, email, password };
+}
+
+/** Remove the accounts the auth tests made. */
+export function deleteTestUsers() {
+  sql(`delete from auth.users where email like '%@auth-test.example'`);
 }

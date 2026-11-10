@@ -324,9 +324,8 @@ export const checkouts = pgTable(
   "checkouts",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => profiles.id),
+    /** Null once the person deletes their account: the order itself is kept for the roaster's records. */
+    userId: uuid("user_id").references(() => profiles.id, { onDelete: "set null" }),
     /** open → paid, or open → expired if they never paid. */
     status: text("status", { enum: ["open", "paid", "expired"] }).notNull().default("open"),
     totalPence: integer("total_pence").notNull(),
@@ -350,9 +349,8 @@ export const orders = pgTable(
     checkoutId: uuid("checkout_id")
       .notNull()
       .references(() => checkouts.id, { onDelete: "cascade" }),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => profiles.id),
+    /** Null once the person deletes their account (see checkouts.userId). */
+    userId: uuid("user_id").references(() => profiles.id, { onDelete: "set null" }),
     roasterId: uuid("roaster_id")
       .notNull()
       .references(() => roasters.id),

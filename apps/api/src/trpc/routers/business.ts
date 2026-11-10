@@ -14,7 +14,7 @@ import {
 import { connectToken } from "../../business/connect-token";
 import { env } from "../../env";
 import { checkoutEnabled, payoutsReady, requireStripe } from "../../payments/stripe";
-import { protectedProcedure, router } from "../init";
+import { limitedProcedure, protectedProcedure, router } from "../init";
 import { recipeColumns } from "./recipes";
 
 /** The caller's role at a roaster; anyone else is turned away. */
@@ -236,7 +236,7 @@ export const businessRouter = router({
   }),
 
   /** Start (or carry on) Stripe onboarding so the roaster can be paid for orders placed here. Owners only. */
-  setupPayouts: protectedProcedure.input(z.object({ roasterId: z.uuid() })).mutation(async ({ ctx, input }) => {
+  setupPayouts: limitedProcedure("payouts", 10).input(z.object({ roasterId: z.uuid() })).mutation(async ({ ctx, input }) => {
     if ((await requireMember(ctx.db, ctx.user.id, input.roasterId)) !== "owner") {
       throw new TRPCError({ code: "FORBIDDEN", message: "Only the roaster's owner can set up payouts." });
     }
@@ -282,7 +282,7 @@ export const businessRouter = router({
   }),
 
   /** Where to send a business account to connect its Shopify store (the install flow, linked to them). */
-  connectShopifyUrl: protectedProcedure.input(z.object({ shop: z.string().trim().min(1).max(255) })).mutation(async ({ ctx, input }) => {
+  connectShopifyUrl: limitedProcedure("connect", 10).input(z.object({ shop: z.string().trim().min(1).max(255) })).mutation(async ({ ctx, input }) => {
     const shop = normalizeShopDomain(input.shop);
     if (!shop) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "Enter your store's myshopify.com address, e.g. your-store.myshopify.com" });

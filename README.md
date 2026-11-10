@@ -72,6 +72,23 @@ Schema changes: edit `packages/db/src/schema.ts`, run `pnpm db:generate`, then `
 - *Roasters.* The dashboard's "Selling on PropperBrew" card starts Stripe Connect Express onboarding (owners only), sets delivery charges, and lists orders placed here with what the roaster receives.
 - *Configuration.* Without `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`, checkout is off everywhere. With Stripe test keys it runs in test mode (card 4242 4242 4242 4242). Shopify needs the `write_orders` scope for `orderCreate`.
 
+**Signing up and account settings.** On both the website and the app:
+
+- *New accounts* confirm their email before they can sign in. Signing in unconfirmed explains why and offers to resend the email. The link signs them in where they were heading on the website. From the app, it lands on the website's `/welcome` page, which tells them to sign in in the app.
+- *Forgot your password?* sends a reset link without saying whether the address has an account. The link opens `/reset-password` on the website, which only accepts a new password when opened from that link. Links work once; a used or expired one says so.
+- *Account settings* (`/account` on the website, Account in the app) change the email address (confirmed from the new address) and the password (the current one is required). They also hold sign out and *delete account*.
+  - `me.deleteAccount` removes the auth user. Their profile, reviews, recipes, votes, shelf and basket go with it. Ratings and vote counts are updated, and orders are kept for the roasters, without the account. A roaster's only owner is refused until it's handed over.
+  - The app stores require account deletion inside the app.
+- *A session that runs out or is revoked* gets a "You've been signed out" notice, rather than a silent sign-out. On the website it links back to sign in, and returns to the same page afterwards.
+- *Email* uses our templates in `supabase/templates` (confirm, reset password, change email, sign-in link).
+- *Limits.* The auth service rate-limits sign-ins and email. The API limits costly actions per person (checkout, bag scans, reviews, recipes, Stripe and Shopify connections), with a 429 and "You're going a bit fast". The limiter is in memory, so move it to Postgres or Redis if the API runs more than one instance.
+- *In production (Supabase):*
+  - turn on email confirmation
+  - set SMTP for real email
+  - paste in the templates and subjects from `compose.yaml`
+  - add the website's `/welcome`, `/reset-password` and `/account` pages to the redirect URLs
+  - keep the minimum password length at 8
+
 **Security.** Shopify tokens are encrypted with AES-256-GCM. All data access goes through the API, which connects as `postgres`. RLS is enabled with no policies, so Supabase's auto-generated REST API exposes nothing. Clients authenticate with Supabase JWTs, which the API verifies via JWKS, or with the HS256 secret if one is set.
 
 ## Design
@@ -88,7 +105,7 @@ pnpm demo        # or: docker compose up --build
 
 The sample coffees have photos (from the Stitch designs) in `apps/api/public/mock`, served by the API at `/mock/*`. This starts the website on http://localhost:3000, the app's web build on http://localhost:8081 and the API on http://localhost:4000, with sample coffees from `e2e/db/seed.sql`. If those ports are in use, set `WEB_PORT`, `MOBILE_PORT` or `API_PORT`.
 
-Signing in works for real: compose runs Supabase's auth service (`auth`, GoTrue) behind a small gateway (`gateway`, `supabase/local/gateway.conf`) at http://127.0.0.1:54321, the address the apps use by default. New accounts are confirmed straight away (there's no mail server). Sample accounts, all with the password `password123`:
+Signing in works for real: compose runs Supabase's auth service (`auth`, GoTrue) behind a small gateway (`gateway`, `supabase/local/gateway.conf`) at http://127.0.0.1:54321, the address the apps use by default. New accounts confirm their email as in production. Nothing is really sent: Mailpit catches it all, and its inbox is at http://localhost:54324 (`MAIL_PORT`). Sample accounts, already confirmed, all with the password `password123`:
 
 | Email | Account |
 |---|---|
@@ -105,7 +122,7 @@ corepack pnpm exec playwright install chromium   # once, from e2e/
 pnpm test:e2e
 ```
 
-`e2e/setup-db.ts` starts the database, auth service and gateway from `compose.yaml` as a separate compose project (`propperbrew-e2e`, database on :54329, auth on :54339) and loads the migrations and seed. Playwright then boots a fake Shopify (`e2e/fake-shopify.ts`, :4199), a fake Stripe (`e2e/fake-stripe.ts`, :4198), the API (:4100), a production build of the Next site (:3100) and the Expo app on react-native-web (:8181).
+`e2e/setup-db.ts` starts the database, auth service and gateway from `compose.yaml` as a separate compose project (`propperbrew-e2e`, database on :54329, auth on :54339) and loads the migrations and seed. Email goes to Mailpit (:54349), and the tests read it through its API (`emailTo` in `fixtures.ts`) to follow confirmation and reset links. Playwright then boots a fake Shopify (`e2e/fake-shopify.ts`, :4199), a fake Stripe (`e2e/fake-stripe.ts`, :4198), the API (:4100), a production build of the Next site (:3100) and the Expo app on react-native-web (:8181).
 
 The tests check content, data flow and the applied design tokens in light and dark mode. They also sign in for real: coffee drinkers and roasters on the website, and the app's sign-in form. The Shopify connect and "Continue with Shopify" flows run end to end against the fake Shopify, which signs its redirects like Shopify does. `SHOPIFY_ORIGIN_OVERRIDE` points the API at it, and the API refuses that setting in production. Checkout runs end to end against the fake Stripe the same way (`STRIPE_API_BASE`, also refused in production). Its payment page takes card 4242… and declines 4000 0000 0000 0002, it signs its webhooks as Stripe does, and the fake Shopify records the orders created in it. Native-only features (camera capture, push) aren't covered.
 
@@ -130,8 +147,9 @@ ANDROID_HOME=~/Library/Android/sdk pnpm test:android
 
 ## Not built yet
 
+- **Sign in with Apple and Google.** This needs an Apple Developer account and a Google OAuth client. Apple requires Sign in with Apple in the iOS app if it offers Google.
 - **Checkout against real Stripe.** Every test runs against `e2e/fake-stripe.ts`. Before taking real money, run the flow once with Stripe test keys and the Stripe CLI (`stripe listen --forward-to localhost:4000/stripe/webhook`), and check the Connect settings (Express accounts, GB) in the Stripe dashboard.
-- Refunds and order updates. Refunds are done in Stripe and Shopify by hand. Shopify's fulfilment webhooks aren't used to update order status yet ("Posted").
+- Refunds. They're done in Stripe and Shopify by hand.
 - A community recipe form on the website (the app has one).
 - Photo uploads (review photos, roaster logos). Hero photos come from the roaster's synced coffee photos for now.
 - Recommendations: `pgvector` is enabled, but nothing uses embeddings yet.

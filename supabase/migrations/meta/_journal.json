@@ -57,6 +57,13 @@
       "when": 1794096016979,
       "tag": "20261108000016_checkout",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794338265969,
+      "tag": "20261110191745_keep_orders_of_deleted_accounts",
+      "breakpoints": true
     }
   ]
 }

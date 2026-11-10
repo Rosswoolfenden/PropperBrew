@@ -2,10 +2,10 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { coffeeBeans, profiles, reviews, type Db } from "@propperbrew/db";
 import { CreateReviewInput, ratingFromDb, ratingToDb, SENSORY_DIMENSIONS } from "@propperbrew/shared";
-import { protectedProcedure, publicProcedure, router } from "../init";
+import { limitedProcedure, protectedProcedure, publicProcedure, router } from "../init";
 
 /** Recompute the bean's rolling aggregates. Cheap at our scale; move to a trigger if it isn't. */
-async function refreshBeanAggregates(db: Db, coffeeBeanId: string) {
+export async function refreshBeanAggregates(db: Db, coffeeBeanId: string) {
   await db
     .update(coffeeBeans)
     .set({
@@ -54,7 +54,7 @@ export const reviewsRouter = router({
   }),
 
   /** One review per user per bean; re-submitting edits it. */
-  upsert: protectedProcedure.input(CreateReviewInput).mutation(async ({ ctx, input }) => {
+  upsert: limitedProcedure("review", 20).input(CreateReviewInput).mutation(async ({ ctx, input }) => {
     const values = {
       userId: ctx.user.id,
       coffeeBeanId: input.coffeeBeanId,

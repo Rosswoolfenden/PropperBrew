@@ -475,3 +475,13 @@ button.button:disabled { opacity: 0.6; cursor: default; }
 .order-line > div:first-child { display: grid; gap: 4px; }
 .order-money { display: grid; justify-items: end; gap: 4px; text-align: right; font: 700 1rem var(--font-headline); color: var(--primary); }
 .order-money .muted { font: 400 0.9rem var(--font-body); }
+
+/* Account and auth */
+.auth-notice { max-width: 1040px; margin: 0 auto; padding: 12px 24px; box-sizing: border-box; background: color-mix(in srgb, var(--secondary-container) 55%, transparent); color: var(--on-secondary-container); font: 500 0.95rem var(--font-body); border-radius: 0 0 8px 8px; }
+.auth-notice a { color: inherit; font-weight: 700; }
+.auth-links { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.account { display: grid; gap: 32px; max-width: 640px; }
+.account .card h2 { margin-bottom: 8px; font-size: 1.35rem; }
+.danger-zone { border: 0; background: color-mix(in srgb, var(--error) 6%, var(--surface-container-lowest)); }
+.button-danger { background: var(--error); color: #fff; }
+.forgot-link { justify-self: end; margin-top: -8px; text-decoration: none; }

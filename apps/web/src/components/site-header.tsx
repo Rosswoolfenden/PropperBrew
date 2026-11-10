@@ -4,7 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession, useTRPC } from "@/app/providers";
-import { supabase } from "@/lib/supabase";
+import { signOut as endSession } from "@/lib/supabase";
+import { AuthNotice } from "./auth-notice";
 
 /** The banner across every page: the brand, and sign-in for coffee drinkers and for roasters. */
 export function SiteHeader() {
@@ -18,7 +19,7 @@ export function SiteHeader() {
   const count = basket.data?.count ?? 0;
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await endSession();
     router.push("/");
   };
 
@@ -83,6 +84,7 @@ export function SiteHeader() {
           )}
         </nav>
       </div>
+      <AuthNotice />
     </header>
   );
 }

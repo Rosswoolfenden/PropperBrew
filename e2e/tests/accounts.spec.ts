@@ -3,7 +3,7 @@
  * service, and Shopify (e2e/fake-shopify.ts) for connecting a store and "Continue with Shopify".
  */
 import { expect, test, type Page } from "@playwright/test";
-import { accounts, apiUrl, seed, seededShopDomains, sql } from "../fixtures";
+import { accounts, apiUrl, emailTo, seed, seededShopDomains, sql } from "../fixtures";
 
 const unique = (prefix: string) => `${prefix}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 /** The name the fake Shopify gives a shop: "corner-ab12" → "Corner Ab12". */
@@ -28,6 +28,10 @@ async function createAccount(page: Page, from: "/sign-in" | "/business", email =
   await form.getByLabel("Email address", { exact: true }).fill(email);
   await form.getByLabel("Password", { exact: true }).fill("a-long-password");
   await form.getByRole("button", { name: from === "/business" ? "Create business account" : "Create account", exact: true }).click();
+  // New accounts confirm their email first; the link signs them in where they were heading.
+  await expect(form.getByRole("status")).toHaveText(`Check your email. We've sent a link to ${email} to confirm your account. Resend the email`);
+  const { link } = await emailTo(email, "Confirm your PropperBrew account");
+  await page.goto(link!);
   return email;
 }
 
@@ -72,7 +76,7 @@ test.describe("coffee drinkers", () => {
 
   test("create an account", async ({ page }) => {
     const email = await createAccount(page, "/sign-in");
-    await expect(page).toHaveURL("/");
+    await expect(page).toHaveURL(/\/#?$/);
     // Name and username both come from the email (see handle_new_user); the name links to their profile.
     const local = email.split("@")[0]!;
     await expect(banner(page).getByRole("link", { name: local, exact: true })).toHaveAttribute("href", new RegExp(`^/u/${local.replace(/-/g, "")}_`));
@@ -145,7 +149,7 @@ test.describe("roasters", () => {
 
   test("a new business connects its Shopify store and its coffees sync in", async ({ page }) => {
     await createAccount(page, "/business", `${unique("owner")}@roaster.test`);
-    await expect(page).toHaveURL("/business/dashboard");
+    await expect(page).toHaveURL(/\/business\/dashboard#?$/);
     await expect(page.getByRole("heading", { name: "Connect your Shopify store" })).toBeVisible();
 
     await page.getByLabel("Shopify store", { exact: true }).fill("not a store!");
@@ -225,7 +229,7 @@ test.describe("roasters", () => {
 
   test("a connect link that's been tampered with doesn't link the store", async ({ page }) => {
     await createAccount(page, "/business", `${unique("owner")}@roaster.test`);
-    await expect(page).toHaveURL("/business/dashboard");
+    await expect(page).toHaveURL(/\/business\/dashboard#?$/);
     await page.goto(`${apiUrl}/api/shopify/auth?shop=${unique("tampered")}.myshopify.com&link=not-a-real-token`);
     await expect(page).toHaveURL("/business/dashboard?error=link-expired");
     await expect(alert(page)).toHaveText("That connection took too long to finish. Please connect your store again.");

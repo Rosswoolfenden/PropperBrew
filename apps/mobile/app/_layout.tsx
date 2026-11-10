@@ -50,6 +50,16 @@ export default function RootLayout() {
         <Stack.Screen name="checkout" options={{ title: "Checkout" }} />
         <Stack.Screen name="order/[id]" options={{ title: "Your order", headerBackVisible: false }} />
         <Stack.Screen name="orders" options={{ title: "Your orders" }} />
+        <Stack.Screen name="account" options={{ title: "Account" }} />
+        <Stack.Screen
+          name="forgot-password"
+          options={{
+            title: "Reset password",
+            // Opened from the sign-in modal, so it has to be one too to show on top.
+            presentation: "modal",
+            headerLeft: () => <HeaderIcon icon="close" label="Close" onPress={() => router.back()} />,
+          }}
+        />
         <Stack.Screen
           name="sign-in"
           options={{

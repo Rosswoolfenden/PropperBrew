@@ -140,6 +140,9 @@ const optionalText = (max: number) =>
     .transform((s) => s || null)
     .nullable();
 
+/** What someone types to confirm deleting their account. */
+export const DELETE_ACCOUNT_PHRASE = "delete my account";
+
 /** Your own profile: how you appear next to your reviews and recipes. */
 export const UserProfileInput = z.object({
   displayName: optionalText(60),

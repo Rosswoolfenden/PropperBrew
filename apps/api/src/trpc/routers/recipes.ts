@@ -4,7 +4,7 @@ import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { brewRecipes, coffeeBeans, profiles, recipeVotes, roasters } from "@propperbrew/db";
 import { CreateBrewRecipeInput, ListRecipesInput } from "@propperbrew/shared";
-import { protectedProcedure, publicProcedure, router, type Context } from "../init";
+import { limitedProcedure, protectedProcedure, publicProcedure, router, type Context } from "../init";
 
 const grinderKey = (model?: string) => model?.trim().toLowerCase().replace(/\s+/g, " ") || null;
 
@@ -85,7 +85,7 @@ export const recipesRouter = router({
     return { ...toRecipe(row), bean: bean! };
   }),
 
-  create: protectedProcedure.input(CreateBrewRecipeInput).mutation(async ({ ctx, input }) => {
+  create: limitedProcedure("recipe", 10).input(CreateBrewRecipeInput).mutation(async ({ ctx, input }) => {
     const [recipe] = await ctx.db
       .insert(brewRecipes)
       .values(recipeColumns(input, { userId: ctx.user.id }))
