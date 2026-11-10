@@ -20,6 +20,8 @@ import {
   BREW_METHODS,
   GRIND_OPTIONS,
   ORDER_STATUSES,
+  REPORT_REASONS,
+  REPORT_TARGETS,
   PROCESSES,
   ROAST_LEVELS,
   ROASTER_ROLES,
@@ -301,6 +303,31 @@ export const shelfEntries = pgTable(
     ...timestamps,
   },
   (t) => [index("shelf_entries_user_idx").on(t.userId, t.finishedAt)],
+);
+
+/**
+ * Someone reporting a review, recipe or profile. Read by a person (see README, "Reports"); one
+ * report per person per thing, so reporting again just updates it.
+ */
+export const reports = pgTable(
+  "reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    reporterId: uuid("reporter_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    targetType: text("target_type", { enum: REPORT_TARGETS }).notNull(),
+    targetId: uuid("target_id").notNull(),
+    reason: text("reason", { enum: REPORT_REASONS }).notNull(),
+    note: text("note"),
+    /** open until someone has looked at it. */
+    status: text("status", { enum: ["open", "resolved"] }).notNull().default("open"),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("reports_once_idx").on(t.reporterId, t.targetType, t.targetId),
+    index("reports_open_idx").on(t.status, t.createdAt),
+  ],
 );
 
 /** A person's basket: coffees from any roaster that takes payment through PropperBrew. */

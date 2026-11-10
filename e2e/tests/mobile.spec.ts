@@ -949,3 +949,29 @@ test.describe("accounts", () => {
     await expect(page.getByRole("status")).toHaveText("You've been signed out. Sign in again to carry on.");
   });
 });
+
+test.describe("reporting", () => {
+  test.afterAll(() => sql("delete from reports"));
+
+  test("report someone's review from the coffee screen", async ({ page }) => {
+    await signIn(page);
+    await page.goto(beanPath);
+    const reviews = page.getByRole("region", { name: "Reviews" });
+    // Not on your own review.
+    await expect(reviews.getByRole("button", { name: "Report alice's review" })).toHaveCount(0);
+    await reviews.getByRole("button", { name: "Report ben's review" }).click();
+    const sheet = page.getByRole("dialog", { name: "Report ben's review" });
+    await sheet.getByRole("button", { name: "Send report" }).click();
+    await expect(sheet.getByRole("alert")).toHaveText("Choose what's wrong.");
+    await sheet.getByRole("radio", { name: "Spam or advertising" }).click();
+    await sheet.getByRole("button", { name: "Send report" }).click();
+    await expect(reviews.getByRole("status")).toHaveText("Thanks for telling us. We'll take a look.");
+    expect(sql("select target_type || '|' || reason from reports where reporter_id = '" + seed.alice.id + "'")).toBe("review|spam");
+  });
+
+  test("signed out, report asks you to sign in", async ({ page }) => {
+    await page.goto(beanPath);
+    await page.getByRole("region", { name: "Reviews" }).getByRole("button", { name: "Report ben's review" }).click();
+    await expect(page).toHaveURL("/sign-in");
+  });
+});

@@ -250,6 +250,15 @@ const cases: [name: string, run: (d: Device) => Promise<void>][] = [
     },
   ],
   [
+    "report: signed out, reporting a review asks you to sign in",
+    async (d) => {
+      await d.launch(bean);
+      await d.scrollTo("Report ben's review", aboveOrderBar);
+      await d.tap("Report ben's review");
+      await d.expect(["The Ritual Awaits"]);
+    },
+  ],
+  [
     "scan screen opens",
     async (d) => {
       await d.launch("/scan");

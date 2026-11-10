@@ -171,3 +171,27 @@ export const RoasterProfileInput = z.object({
   heroImageUrl: z.url().nullable(),
 });
 export type RoasterProfileInput = z.input<typeof RoasterProfileInput>;
+
+/** What can be reported, and why (shown as choices, in this order). */
+export const REPORT_TARGETS = ["review", "recipe", "profile"] as const;
+export type ReportTarget = (typeof REPORT_TARGETS)[number];
+export const REPORT_REASONS = ["spam", "offensive", "misleading", "other"] as const;
+export const REPORT_REASON_LABELS: Record<(typeof REPORT_REASONS)[number], string> = {
+  spam: "Spam or advertising",
+  offensive: "Offensive or abusive",
+  misleading: "False or misleading",
+  other: "Something else",
+};
+export const ReportInput = z.object({
+  targetType: z.enum(REPORT_TARGETS),
+  /** A review or recipe id, or a profile's username. */
+  targetId: z.string().trim().min(1).max(60),
+  reason: z.enum(REPORT_REASONS),
+  note: z
+    .string()
+    .trim()
+    .max(1000)
+    .transform((s) => s || undefined)
+    .optional(),
+});
+export type ReportInput = z.input<typeof ReportInput>;

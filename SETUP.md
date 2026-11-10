@@ -77,4 +77,7 @@ README, "Local preview"). Tick items off as they're done; when one is, send over
 
 ## Decisions
 
+- [ ] **Who reads reports, and how often.** Reported reviews, recipes and profiles are saved but nobody is told yet (README, "Reports"). The app stores expect reports to be acted on. Options are a daily email digest to the support address, or a small admin page later.
+  - **Send:** who should get them.
+
 - [ ] **Merge `feature/roaster-platform` into `main`?** It has seven features on it. I can open a pull request.

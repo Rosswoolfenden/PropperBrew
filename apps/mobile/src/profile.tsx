@@ -4,6 +4,7 @@ import { Link } from "expo-router";
 import type { ReactNode } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { fonts, themed } from "./theme";
+import { ReportButton } from "./report";
 import { useTRPC, type RouterOutputs } from "./trpc";
 import { Body, Button, Chip, Eyebrow, GUTTER, Headline, Loading, Stars } from "./ui";
 
@@ -81,6 +82,11 @@ function ProfileView({ profile: p, children }: { profile: Profile; children?: Re
       </View>
 
       {children}
+      {!p.isYou && (
+        <View style={{ alignItems: "center" }}>
+          <ReportButton targetType="profile" targetId={p.username} what={`${p.username}'s profile`} ownerUsername={p.username} />
+        </View>
+      )}
 
       <View role="region" aria-label={p.isYou ? "Your Reviews" : "Reviews"} style={styles.section}>
         <Headline size="section">{p.isYou ? "Your Reviews" : "Reviews"}</Headline>

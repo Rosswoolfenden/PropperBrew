@@ -16,6 +16,7 @@ import {
 import { AddToBasket } from "@/components/add-to-basket";
 import { OrderForm } from "@/components/order-form";
 import { Rating, Stars } from "@/components/rating";
+import { ReportButton } from "@/components/report-button";
 import { ReviewComposer } from "@/components/review-composer";
 import { api } from "@/lib/trpc";
 
@@ -178,6 +179,9 @@ export default async function BeanPage({ params }: { params: Params }) {
                         </Step>
                       ) : null}
                     </div>
+                    {r.author.type === "user" && (
+                      <ReportButton targetType="recipe" targetId={r.id} what={`${r.author.username}'s recipe`} ownerUsername={r.author.username} />
+                    )}
                   </div>
                 ))}
               </div>
@@ -227,6 +231,7 @@ export default async function BeanPage({ params }: { params: Params }) {
                 </ul>
               )}
               {r.body && <p className="review-body">{r.body}</p>}
+              <ReportButton targetType="review" targetId={r.id} what={`${r.user.username}'s review`} ownerUsername={r.user.username} />
             </div>
           ))}
         </div>

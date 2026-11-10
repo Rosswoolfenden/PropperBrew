@@ -5,6 +5,7 @@ import { BREW_METHOD_LABELS, formatDuration, radius } from "@propperbrew/shared"
 import { activeStepIndex, BrewTimerCard, useBrewTimer } from "@/brew-timer";
 import { fonts, themed } from "@/theme";
 import { useTRPC } from "@/trpc";
+import { ReportButton } from "@/report";
 import { UpvoteButton } from "@/upvote";
 import { Body, Chip, Eyebrow, Frame, GUTTER, Headline, Loading } from "@/ui";
 
@@ -60,6 +61,9 @@ export default function RecipeScreen() {
             {r.author.type === "roaster" ? `Recommended by ${r.author.name}. ` : ""}Tried it? Upvote it.
           </Body>
         </View>
+        {r.author.type === "user" && (
+          <ReportButton targetType="recipe" targetId={r.id} what={`${r.author.username}'s recipe`} ownerUsername={r.author.username} />
+        )}
       </View>
 
       <Frame uri={r.bean.imageUrl} aspectRatio={342 / 320} />

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { deliveryNote, formatAltitude, formatPriceFrom, humanize, possessive, radius, type BrewMethod } from "@propperbrew/shared";
 import { ORDER_BAR_HEIGHT, OrderBar, SizeOptions } from "@/order";
+import { ReportButton } from "@/report";
 import { RecipeCard } from "@/recipe-card";
 import { fonts, themed } from "@/theme";
 import { useTRPC } from "@/trpc";
@@ -192,6 +193,7 @@ export default function BeanScreen() {
                 </View>
               )}
               {r.body && <Body muted>{r.body}</Body>}
+              <ReportButton targetType="review" targetId={r.id} what={`${r.user.username}'s review`} ownerUsername={r.user.username} />
             </View>
           ))}
         </View>

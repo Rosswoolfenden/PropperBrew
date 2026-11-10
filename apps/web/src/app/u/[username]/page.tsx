@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { TRPCClientError } from "@trpc/client";
 import { BREW_METHOD_LABELS, brewRatio, sensoryLevel } from "@propperbrew/shared";
 import { OwnerHeading, ProfileEditor } from "@/components/profile-editor";
+import { ReportButton } from "@/components/report-button";
 import { Stars } from "@/components/rating";
 import { api } from "@/lib/trpc";
 
@@ -64,6 +65,9 @@ export default async function ProfilePage({ params }: { params: Params }) {
       </dl>
 
       <ProfileEditor username={p.username} />
+      <div className="profile-report">
+        <ReportButton targetType="profile" targetId={p.username} what={`${p.username}'s profile`} ownerUsername={p.username} />
+      </div>
 
       <section className="section" aria-labelledby="reviews-heading">
         <OwnerHeading id="reviews-heading" username={p.username}>

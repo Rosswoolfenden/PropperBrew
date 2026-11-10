@@ -91,6 +91,13 @@ Schema changes: edit `packages/db/src/schema.ts`, run `pnpm db:generate`, then `
   - add the website's `/welcome`, `/reset-password` and `/account` pages to the redirect URLs
   - keep the minimum password length at 8
 
+**Reports.** Reviews, recipes and profiles have a Report button on the website and in the app. You pick a reason (spam, offensive, misleading or something else) and can add a note. Reports go into the `reports` table with status `open`, one per person per post (reporting again updates it). It isn't shown on your own posts, and the API refuses reports of your own posts. There's no moderation screen yet. To see what's waiting:
+
+```sql
+select r.created_at, r.target_type, r.target_id, r.reason, r.note, p.username as reporter
+from reports r join profiles p on p.id = r.reporter_id where r.status = 'open' order by r.created_at;
+```
+
 **Security.** Shopify tokens are encrypted with AES-256-GCM. All data access goes through the API, which connects as `postgres`. RLS is enabled with no policies, so Supabase's auto-generated REST API exposes nothing. Clients authenticate with Supabase JWTs, which the API verifies via JWKS, or with the HS256 secret if one is set.
 
 ## Design
