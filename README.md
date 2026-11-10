@@ -16,6 +16,8 @@ supabase/             Local Postgres 17, auth, storage.
 
 ## Getting started
 
+Accounts and keys still to set up (Shopify, Stripe, Supabase, app stores…) are listed in [SETUP.md](SETUP.md).
+
 ```sh
 corepack enable                  # provides pnpm (version pinned in package.json)
 pnpm install
