@@ -1,6 +1,6 @@
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
-import { reviews, shelfEntries } from "@propperbrew/db";
+import { brews, reviews, shelfEntries } from "@propperbrew/db";
 import { ShelfEntryInput, restState, restWindowDays } from "@propperbrew/shared";
 import { protectedProcedure, router } from "../init";
 
@@ -29,8 +29,21 @@ export const shelfRouter = router({
           ).map((r) => r.id)
         : [],
     );
+    // How many times they've brewed from each bag (the journal).
+    const counts = new Map(
+      entries.length
+        ? (
+            await ctx.db
+              .select({ id: brews.shelfEntryId, n: sql<number>`count(*)::int` })
+              .from(brews)
+              .where(inArray(brews.shelfEntryId, entries.map((e) => e.id)))
+              .groupBy(brews.shelfEntryId)
+          ).map((r) => [r.id, r.n])
+        : [],
+    );
     return entries.map((e) => ({
       ...e,
+      brewCount: counts.get(e.id) ?? 0,
       reviewed: reviewed.has(e.coffeeBeanId),
       rest: e.roastDate ? restState(e.roastDate, restWindowDays({ roastLevel: e.bean.roastLevel })) : null,
     }));

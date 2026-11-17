@@ -40,6 +40,9 @@ export function ProfileEditor({ username }: { username: string }) {
         <button type="button" className="button button-secondary button-sm" onClick={() => setOpen(true)}>
           Edit profile
         </button>
+        <Link href="/journal" className="button button-secondary button-sm">
+          Your journal
+        </Link>
         <Link href="/orders" className="button button-secondary button-sm">
           Your orders
         </Link>

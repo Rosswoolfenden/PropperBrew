@@ -509,3 +509,51 @@ button.button:disabled { opacity: 0.6; cursor: default; }
 .photo-picker:focus-within label.button { outline: 2px solid var(--primary); outline-offset: 2px; }
 .review-photo { width: min(100%, 420px); border-radius: 12px; display: block; }
 .roaster-logo { width: 72px; height: 72px; border-radius: 12px; object-fit: contain; background: #fff; padding: 6px; box-sizing: border-box; }
+
+/* Journal */
+.journal { display: grid; gap: 56px; }
+.journal-stats { margin: 0; }
+.journal-stats dd { font-size: 1.5rem; }
+.shelf-list, .brew-list { display: grid; gap: 12px; padding: 0; margin: 0; list-style: none; }
+.shelf-entry { display: grid; grid-template-columns: 88px 1fr; gap: 20px; align-items: center; padding: 16px; border-radius: 12px; background: var(--surface-container-low); }
+.shelf-entry .frame { aspect-ratio: 1; background: var(--surface-container-lowest); }
+.shelf-entry .frame-contain img { padding: 8px; }
+.shelf-entry-body { display: grid; gap: 4px; }
+.shelf-entry-body h3 { font-size: 1.25rem; }
+.shelf-entry-body h3 a, .brew-entry > a { color: var(--primary); text-decoration: none; }
+.shelf-entry-body p { margin: 0; }
+.rest-state { color: var(--secondary); font-weight: 700; }
+.shelf-actions { display: flex; align-items: center; gap: 16px; margin-top: 6px; flex-wrap: wrap; }
+.shelf-actions .button { width: auto; }
+.brew-entry { display: grid; gap: 6px; padding: 18px 20px; border-radius: 12px; background: var(--surface-container-lowest); }
+.brew-entry p { margin: 0; }
+.brew-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font: 700 1.1rem var(--font-headline); color: var(--primary); }
+.brew-form { max-width: 640px; }
+.brew-ratio { margin: -8px 0 0; color: var(--secondary); }
+.brew-rating { border: 0; margin: 0; padding: 0; display: flex; gap: 6px; }
+.brew-rating legend { width: 100%; margin-bottom: 8px; padding: 0; }
+.brew-rating label { cursor: pointer; font-size: 1.75rem; color: var(--surface-container-highest); line-height: 1; }
+.brew-rating label.on { color: var(--primary); }
+.brew-rating input { position: absolute; opacity: 0; pointer-events: none; }
+.brew-rating label:has(input:focus-visible) { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+.add-to-shelf { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
+.add-to-shelf .field { flex: 1; min-width: 180px; }
+.add-to-shelf .button { width: auto; flex: none; }
+
+/* Roaster reviews (Stitch "Rate Roaster") */
+.roaster-review-summary { display: flex; align-items: center; gap: 32px; flex-wrap: wrap; margin-bottom: 24px; }
+.roaster-review-summary dl { display: flex; gap: 24px; margin: 0; }
+.roaster-review-summary dd { margin: 4px 0 0; font: 700 1.1rem var(--font-headline); color: var(--primary); }
+.roaster-reviews { padding: 0; margin: 32px 0 0; list-style: none; }
+.verified { color: var(--secondary); }
+.score-card { display: grid; gap: 12px; padding: 20px 24px; border-radius: 12px; background: var(--surface-container-low); }
+.score-card label { display: grid; gap: 4px; }
+.score-card label strong { font: 700 1.05rem var(--font-headline); color: var(--primary); }
+.score-card input[type="range"] { width: 100%; accent-color: var(--primary); }
+.score-card input[type="range"].unset { opacity: 0.45; }
+.score-scale { display: flex; justify-content: space-between; font: 500 11px var(--font-headline); text-transform: uppercase; letter-spacing: 0.08rem; color: var(--on-surface-variant); }
+.score-scale strong { color: var(--on-surface); }
+.score-card .text-button { justify-self: start; }
+.chars-left { justify-self: end; font-size: 0.85rem; }
+.chip-remove { background: none; border: 0; padding: 0 0 0 4px; cursor: pointer; color: inherit; font-size: 1rem; line-height: 1; }
+.add-note input { flex: 1; min-width: 0; font: 1rem var(--font-body); background: var(--surface-container-highest); border: 0; border-radius: 6px; padding: 12px 14px; }

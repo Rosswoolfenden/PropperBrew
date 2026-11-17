@@ -142,6 +142,32 @@ function ProfileView({ profile: p, children }: { profile: Profile; children?: Re
         )}
       </View>
 
+      {p.roasterReviews.length > 0 && (
+        <View role="region" aria-label="Roasteries" style={styles.section}>
+          <Headline size="section">Roasteries</Headline>
+          {p.roasterReviews.map((r) => (
+            <View key={r.id} style={styles.review}>
+              <View style={styles.reviewHead}>
+                <Eyebrow style={styles.roaster}>Roastery</Eyebrow>
+                <Body muted style={styles.date}>
+                  {dateFormat.format(r.createdAt)}
+                </Body>
+              </View>
+              <Link href={{ pathname: "/roaster/[slug]", params: { slug: r.roaster.slug } }} asChild>
+                <Pressable role="link">
+                  <Text style={styles.coffee}>{r.roaster.name}</Text>
+                </Pressable>
+              </Link>
+              {r.body && <Body style={styles.quote}>“{r.body}”</Body>}
+              <View style={styles.reviewHead}>
+                <Stars value={r.rating} />
+                {r.verifiedPurchase && <Eyebrow>Verified purchase</Eyebrow>}
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
       <View role="region" aria-label={p.isYou ? "Your Recipes" : "Recipes"} style={styles.section}>
         <Headline size="section">{p.isYou ? "Your Recipes" : "Recipes"}</Headline>
         {p.recipes.length === 0 ? (

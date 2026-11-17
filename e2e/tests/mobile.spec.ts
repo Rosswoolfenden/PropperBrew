@@ -800,7 +800,7 @@ test.describe("basket and checkout", () => {
 test.describe("shelf", () => {
   test("asks signed-out users to sign in, then shows the sign-in form", async ({ page }) => {
     await page.goto("/journal");
-    const cta = page.getByRole("button", { name: "Sign in to see your shelf" });
+    const cta = page.getByRole("button", { name: "Sign in to see your journal" });
     await expect(cta).toBeVisible({ timeout: 30_000 }); // react-query retries the 401 before erroring
     await cta.click();
 
@@ -1025,5 +1025,125 @@ test.describe("photos", () => {
     // Opened straight from a link, posting goes on to the coffee.
     await expect(page).toHaveURL(`/bean/${seed.cerrado.roasterSlug}/${seed.cerrado.slug}`);
     await expect(page.getByRole("region", { name: "Reviews" }).locator('img[src*="/uploads/review/"]')).toHaveCount(1);
+  });
+});
+
+test.describe("brew journal", () => {
+  test.beforeEach(() => sql(`delete from brews where user_id = '${seed.alice.id}'`));
+  test.afterAll(() => sql(`delete from brews where user_id = '${seed.alice.id}'`));
+
+  test("log a brew from a bag on your shelf, then change it and brew it again", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/journal");
+    await expect(page.getByText("No brews yet.", { exact: false })).toBeVisible();
+    await expect(page.getByLabel("Brews: 0")).toBeVisible();
+    await page.getByRole("link", { name: `Log a brew of ${seed.cerrado.name}` }).click();
+    await expect(page).toHaveURL(/\/brew\/new\?/);
+    const form = page.getByRole("form", { name: "Brew" }).filter({ visible: true });
+    await form.getByRole("button", { name: "Save brew" }).click();
+    await expect(form.getByText("Enter the coffee dose")).toBeVisible();
+    await form.getByRole("button", { name: "AeroPress", exact: true }).click();
+    await form.getByLabel("Coffee (g)").fill("15");
+    await form.getByLabel("Water (g)").fill("230");
+    await expect(form.getByLabel("Ratio 1:15.3")).toBeVisible();
+    await form.getByLabel("Brew time").fill("1:45");
+    await form.getByRole("radio", { name: "4 stars" }).click();
+    await form.getByLabel("Notes").fill("Chocolatey. Keep it.");
+    await form.getByRole("button", { name: "Save brew" }).click();
+
+    await expect(page).toHaveURL("/journal");
+    const recent = page.getByRole("region", { name: "Recent brews" }).filter({ visible: true });
+    const brew = recent.getByRole("link", { name: new RegExp(`^AeroPress, ${seed.cerrado.name}, `) });
+    await expect(brew).toContainText("15g → 230g (1:15.3) · 1:45");
+    await expect(brew).toContainText("Chocolatey. Keep it.");
+    await expect(page.getByLabel("Brew: 1").filter({ visible: true })).toBeVisible();
+    await expect(page.getByLabel("Favourite: AeroPress").filter({ visible: true })).toBeVisible();
+
+    // Change it.
+    await brew.click();
+    await expect(page).toHaveURL(/\/brew\/[0-9a-f-]{36}$/);
+    const edit = page.getByRole("form", { name: "Brew" }).filter({ visible: true });
+    await expect(edit.getByLabel("Notes")).toHaveValue("Chocolatey. Keep it.");
+    await edit.getByLabel("Notes").fill("Chocolatey. Next time 240g.");
+    await edit.getByRole("button", { name: "Save changes" }).click();
+    await expect(page).toHaveURL("/journal");
+    await expect(recent.getByText("Chocolatey. Next time 240g.")).toBeVisible();
+
+    // Brew it again: the form starts from that brew, without its stars and notes.
+    await recent.getByRole("link", { name: /^AeroPress/ }).click();
+    await page.getByRole("button", { name: "Brew again" }).click();
+    await expect(page.getByText("Starting from that brew.", { exact: false })).toBeVisible();
+    const again = page.getByRole("form", { name: "Brew" }).filter({ visible: true });
+    await expect(again.getByLabel("Water (g)")).toHaveValue("230");
+    await expect(again.getByLabel("Notes")).toHaveValue("");
+    await again.getByLabel("Water (g)").fill("240");
+    await again.getByRole("button", { name: "Save brew" }).click();
+    await expect(page).toHaveURL("/journal");
+    await expect(recent.getByRole("link")).toHaveCount(2);
+    expect(sql(`select string_agg(water_weight_g::text, ',' order by brewed_at) from brews where user_id = '${seed.alice.id}'`)).toBe("230,240");
+
+    // Delete one.
+    await recent.getByRole("link").first().click();
+    await page.getByRole("button", { name: "Delete this brew" }).click();
+    await expect(page).toHaveURL("/journal");
+    await expect(recent.getByRole("link")).toHaveCount(1);
+  });
+
+  test("log the brew you just made from a recipe", async ({ page }) => {
+    await signIn(page);
+    await page.goto(`/recipe/${seed.inStock.v60RecipeId}`);
+    await page.getByRole("button", { name: "Log this brew" }).click();
+    await expect(page.getByText("Starting from the recipe.", { exact: false })).toBeVisible();
+    const form = page.getByRole("form", { name: "Brew" }).filter({ visible: true });
+    await expect(form.getByRole("button", { name: "V60 Pour-Over", exact: true })).toHaveAttribute("aria-selected", "true");
+    await expect(form.getByLabel("Coffee (g)")).toHaveValue("15");
+    await form.getByRole("button", { name: "Save brew" }).click();
+    await expect(page).toHaveURL("/journal");
+    expect(sql(`select recipe_id from brews where user_id = '${seed.alice.id}'`)).toBe(seed.inStock.v60RecipeId);
+  });
+
+  test("signed out, logging a brew asks you to sign in", async ({ page }) => {
+    await page.goto(`/recipe/${seed.inStock.v60RecipeId}`);
+    await page.getByRole("button", { name: "Log this brew" }).click();
+    await expect(page).toHaveURL("/sign-in");
+  });
+});
+
+test.describe("roaster reviews", () => {
+  test.beforeEach(() => sql("delete from roaster_reviews"));
+  test.afterAll(() => sql("delete from roaster_reviews"));
+
+  test("review a roaster from its screen (Rate Roaster)", async ({ page }) => {
+    await signIn(page);
+    await page.goto(`/roaster/${seed.secondRoaster.slug}`);
+    const region = page.getByRole("region", { name: "What People Say" });
+    await expect(region.getByText(`No reviews of ${seed.secondRoaster.name} yet.`)).toBeVisible();
+    await region.getByRole("button", { name: `Review ${seed.secondRoaster.name}` }).click();
+    await expect(page).toHaveURL(`/roaster-review/${seed.secondRoaster.slug}`);
+    await expect(page.getByText("Reviewing roaster")).toBeVisible();
+
+    await page.getByRole("button", { name: "Submit feedback" }).click();
+    await expect(page.getByRole("alert")).toHaveText("Choose an overall rating.");
+    await page.getByRole("radio", { name: "4 stars" }).click();
+    await page.getByRole("radio", { name: "Shipping 5 of 5" }).click();
+    await expect(page.getByText("5.0 / 5.0")).toBeVisible();
+    await page.getByLabel("The narrative").fill("Fast and plastic-free.");
+    await expect(page.getByText("218 characters left")).toBeVisible();
+    await page.getByLabel("Add a note").fill("Hazelnut");
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Remove Hazelnut" })).toBeVisible();
+    await page.getByRole("button", { name: "Submit feedback" }).click();
+
+    await expect(page).toHaveURL(`/roaster/${seed.secondRoaster.slug}`);
+    await expect(region.getByText("“Fast and plastic-free.”")).toBeVisible();
+    await expect(region.getByText("Shipping 5/5")).toBeVisible();
+    await expect(region.getByRole("button", { name: "Edit your review" })).toBeVisible();
+    expect(sql("select rating || '|' || shipping || '|' || array_to_string(notes, ',') from roaster_reviews")).toBe("4|5|Hazelnut");
+  });
+
+  test("signed out, reviewing a roaster asks you to sign in", async ({ page }) => {
+    await page.goto(`/roaster/${seed.secondRoaster.slug}`);
+    await page.getByRole("region", { name: "What People Say" }).getByRole("button", { name: `Review ${seed.secondRoaster.name}` }).click();
+    await expect(page).toHaveURL("/sign-in");
   });
 });

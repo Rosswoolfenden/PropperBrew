@@ -1,19 +1,24 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
-import { Link, useLocalSearchParams } from "expo-router";
+import { Link, router, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
 import { formatPriceFrom, humanize, notesSentence, radius } from "@propperbrew/shared";
+import { ReportButton } from "@/report";
+import { useSession } from "@/session";
 import { fonts, themed, useColors } from "@/theme";
 import { useTRPC } from "@/trpc";
-import { Body, Chip, Eyebrow, Frame, GUTTER, Headline, Loading, Rating } from "@/ui";
+import { Body, Button, Chip, Eyebrow, Frame, GUTTER, Headline, Loading, Rating, Stars } from "@/ui";
 
 /** A roaster's page (Stitch "Roaster Profile"): who they are, and their current roasts. */
 export default function RoasterScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const trpc = useTRPC();
   const roaster = useQuery(trpc.roasters.bySlug.queryOptions({ slug }));
+  const reviews = useQuery(trpc.roasterReviews.forRoaster.queryOptions({ slug }));
+  const { session, ready } = useSession();
+  const mine = useQuery({ ...trpc.roasterReviews.mine.queryOptions({ roasterId: roaster.data?.id ?? "" }), enabled: !!roaster.data && !!session });
   const styles = useStyles();
   const colors = useColors();
   const dark = useColorScheme() === "dark";
@@ -77,6 +82,44 @@ export default function RoasterScreen() {
         )}
       </View>
 
+      <View role="region" aria-label="What People Say" style={{ gap: 20 }}>
+        <Headline size="section">What People Say</Headline>
+        {reviews.data && reviews.data.summary.count > 0 && reviews.data.summary.rating !== null && (
+          <Rating value={reviews.data.summary.rating} count={reviews.data.summary.count} />
+        )}
+        <Button
+          label={mine.data ? "Edit your review" : `Review ${r.name}`}
+          icon="rate-review"
+          variant="secondary"
+          disabled={!ready}
+          onPress={() => (session ? router.push({ pathname: "/roaster-review/[slug]", params: { slug: r.slug } }) : router.push("/sign-in"))}
+        />
+        {reviews.data?.reviews.length === 0 && <Body muted>No reviews of {r.name} yet.</Body>}
+        {reviews.data?.reviews.map((rv) => (
+          <View key={rv.id} style={{ gap: 8 }}>
+            <View style={styles.reviewHead}>
+              <Eyebrow style={{ color: colors.secondary }}>{rv.user.username}</Eyebrow>
+              <Stars value={rv.rating} />
+            </View>
+            {rv.verifiedPurchase && <Eyebrow>Verified purchase</Eyebrow>}
+            {rv.traceability || rv.shipping ? (
+              <Body muted style={{ fontSize: 15 }}>
+                {[rv.traceability && `Traceability ${rv.traceability}/5`, rv.shipping && `Shipping ${rv.shipping}/5`].filter(Boolean).join(" · ")}
+              </Body>
+            ) : null}
+            {rv.body ? <Body muted>“{rv.body}”</Body> : null}
+            {rv.notes.length > 0 && (
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                {rv.notes.map((n) => (
+                  <Chip key={n} small label={n} />
+                ))}
+              </View>
+            )}
+            <ReportButton targetType="roaster_review" targetId={rv.id} what={`${rv.user.username}'s review of ${r.name}`} ownerUsername={rv.user.username} />
+          </View>
+        ))}
+      </View>
+
       {r.address || r.websiteUrl ? (
         <View style={{ gap: 16 }}>
           <Headline size="section">Visit the Roastery</Headline>
@@ -102,6 +145,7 @@ export default function RoasterScreen() {
 const useStyles = themed((c) =>
   StyleSheet.create({
     container: { padding: GUTTER, paddingBottom: 64, gap: 48 },
+    reviewHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
     logo: { width: 64, height: 64, borderRadius: radius.lg, backgroundColor: "#fff", marginBottom: 8 },
     heroText: { position: "absolute", left: 28, right: 28, bottom: 28, gap: 8, alignItems: "flex-start" },
     established: { fontFamily: fonts.label, fontSize: 10, letterSpacing: 2, textTransform: "uppercase", opacity: 0.85 },

@@ -6,6 +6,8 @@ import { usersRouter } from "./routers/users";
 import { basketRouter } from "./routers/basket";
 import { ordersRouter } from "./routers/orders";
 import { reportsRouter } from "./routers/reports";
+import { brewsRouter } from "./routers/brews";
+import { roasterReviewsRouter } from "./routers/roaster-reviews";
 import { recipesRouter } from "./routers/recipes";
 import { reviewsRouter } from "./routers/reviews";
 import { roastersRouter } from "./routers/roasters";
@@ -25,6 +27,8 @@ export const appRouter = router({
   basket: basketRouter,
   orders: ordersRouter,
   reports: reportsRouter,
+  brews: brewsRouter,
+  roasterReviews: roasterReviewsRouter,
 });
 
 export type AppRouter = typeof appRouter;

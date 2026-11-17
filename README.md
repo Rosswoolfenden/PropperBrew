@@ -49,7 +49,7 @@ Schema changes: edit `packages/db/src/schema.ts`, run `pnpm db:generate`, then `
 
 **Discovery and ordering.** `roasters.discover` returns roasters with something in stock, newest first, each with up to 8 of their coffees and a "from" price. Both apps lay these out like the Stitch Roaster Discovery screen: a roaster spotlight, "The Collection" grid of roasters, the newest arrivals, then a horizontally scrolling row per roaster (styled after Curated Collections). On a coffee's page you pick a size and quantity, then check out on the roaster's Shopify store (in an in-app browser sheet on mobile).
 
-**App navigation.** The app has the bottom tabs from the Stitch designs: Explore (discovery), Journal (your shelf), Basket (only when in-app checkout is on, with a count badge) and Profile. Scanning a bag is in the header of Explore and Journal. Everything else (coffees, recipes, roasters, search, checkout, account) opens on top of the tabs. The tabs live in `apps/mobile/app/(tabs)`.
+**App navigation.** The app has the bottom tabs from the Stitch designs: Explore (discovery), Journal (your shelf and brews), Basket (only when in-app checkout is on, with a count badge) and Profile. Scanning a bag is in the header of Explore and Journal. Everything else (coffees, recipes, roasters, search, checkout, account) opens on top of the tabs. The tabs live in `apps/mobile/app/(tabs)`.
 
 **Search.** `beans.search` matches words against the coffee's full-text index, its name, its roaster's name and its tasting notes (symbols such as `%` are matched literally). Results can be filtered by origin, process, roast level, decaf and a maximum price, and sorted by newest, top rated or lowest price. By default only coffees you can buy right now are shown; "Include sold out" adds the rest. `beans.searchOptions` lists only the origins, processes and roasts of in-stock coffees, so no filter leads to an empty page. On the website, `/search` keeps everything in the URL (`?q=jasmine&origin=Ethiopia&sort=price_low`), with parameters in a fixed order, so a search can be shared or bookmarked. It's linked from the banner and from a search box on Discover. In the app, the search field at the top of Discover opens a search screen that updates as you type.
 
@@ -58,6 +58,22 @@ Schema changes: edit `packages/db/src/schema.ts`, run `pnpm db:generate`, then `
 **Reviews.** One review per person per coffee (posting again edits it): a 1–5 star rating, an optional sensory profile (acidity, sweetness, body, aftertaste and balance, each 1–5, from the Stitch Review Coffee design), tasting notes and written notes. Posting recomputes the coffee's average rating and per-dimension sensory averages (`reviews.upsert`), which the coffee page shows as bars. In the app, the shelf asks "How was it?" once a bag reaches its peak rest window and you haven't reviewed it. On the website, the coffee page has the same review form and is rebuilt as soon as a review is posted.
 
 **Profiles.** Everyone has a public profile (`users.profile`), following the Stitch User Profile & Reviews design: their name, a line about them, their usual brew method and grinder, counts of recipes, reviews and roasters they've tried, then their reviews (tasting notes, acidity, stars and notes) and recipes. Nothing from their shelf is shown. On the website it's `/u/<username>`, linked from your name in the banner and from review and recipe authors. In the app, the Profile tab opens yours, and authors' names open theirs. You can edit your name, bio, brew method and grinder from your own profile (`me.update`).
+
+**Roaster reviews.** People can review a roaster as a whole, following the Stitch Rate Roaster design: an overall star rating (required), optional traceability and shipping scores (1–5), a short narrative (up to 240 characters) and the signature notes they found.
+
+- *One per person per roaster;* posting again edits it (`roasterReviews.upsert`). A roaster's own team can't review it.
+- *Verified purchase* shows when the reviewer has bought from that roaster through PropperBrew's checkout.
+- *Where they appear:* a "What People Say" section, with the averages, on the roaster's page (website and app); the reviewer's profile, under Roasteries; and the roaster's dashboard feedback.
+- They can be reported like any other post.
+
+**Brew journal.** The app's Journal tab and `/journal` on the website hold your shelf (bags, where each is in its rest window, how often you've brewed it) and every brew you log (`brews`).
+
+- *What a brew records:* method, dose, water, temperature, grind, time, a 1–5 star rating and notes. It can also link to the bag it came from and the recipe it followed.
+- *Where you log one:* from a bag on your shelf, from any coffee's page, or after brewing a recipe. The recipe screen's "Log this brew" passes the timer's time.
+- *Starting point.* A new log starts from your last brew of that coffee (or the recipe), so you only change what you did differently. "Brew again" starts from any past brew.
+- *Your numbers:* brews this week, the total, and your most-used method.
+- *Finishing a bag* takes it off the shelf; its brews stay. Brews are private (`brews.*`, owner only).
+- *On the website*, "Add to my shelf" on a coffee's page takes a roast date.
 
 **Rest window.** Shelf entries with a roast date get a push notification when the coffee enters its peak window (`packages/shared/src/resting.ts`).
 

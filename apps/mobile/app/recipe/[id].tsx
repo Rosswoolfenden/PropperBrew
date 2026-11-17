@@ -1,13 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useLocalSearchParams } from "expo-router";
+import { Link, router, useLocalSearchParams } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { BREW_METHOD_LABELS, formatDuration, radius } from "@propperbrew/shared";
 import { activeStepIndex, BrewTimerCard, useBrewTimer } from "@/brew-timer";
 import { fonts, themed } from "@/theme";
 import { useTRPC } from "@/trpc";
 import { ReportButton } from "@/report";
+import { useSession } from "@/session";
 import { UpvoteButton } from "@/upvote";
-import { Body, Chip, Eyebrow, Frame, GUTTER, Headline, Loading } from "@/ui";
+import { Body, Button, Chip, Eyebrow, Frame, GUTTER, Headline, Loading } from "@/ui";
 
 type Tile = { label: string; value: string; unit?: string };
 
@@ -16,6 +17,7 @@ export default function RecipeScreen() {
   const trpc = useTRPC();
   const recipe = useQuery(trpc.recipes.byId.queryOptions({ id }));
   const timer = useBrewTimer();
+  const { session, ready } = useSession();
   const styles = useStyles();
 
   if (recipe.isPending) return <Loading />;
@@ -114,6 +116,26 @@ export default function RecipeScreen() {
       )}
 
       <BrewTimerCard timer={timer} steps={r.steps} totalSeconds={totalSeconds} />
+      <Button
+        label="Log this brew"
+        icon="edit-note"
+        variant="secondary"
+        disabled={!ready}
+        onPress={() =>
+          session
+            ? router.push({
+                pathname: "/brew/new",
+                params: {
+                  beanId: r.coffeeBeanId,
+                  beanName: r.bean.name,
+                  recipeId: r.id,
+                  // The timer's time, if they used it.
+                  ...(timer.elapsed > 0 && { time: String(Math.round(timer.elapsed)) }),
+                },
+              })
+            : router.push("/sign-in")
+        }
+      />
     </ScrollView>
   );
 }

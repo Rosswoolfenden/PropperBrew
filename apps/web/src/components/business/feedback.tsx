@@ -5,15 +5,34 @@ import type { RouterOutputs } from "@/lib/trpc";
 
 type Roaster = RouterOutputs["business"]["me"]["roasters"][number];
 
-/** What people are saying about the roaster's coffees: recent reviews and community recipes. */
+/** What people are saying: reviews of the roastery and of its coffees, and community recipes. */
 export function Feedback({ roaster }: { roaster: Roaster }) {
-  const { reviews, recipes } = roaster.feedback;
+  const { reviews, recipes, roasterReviews } = roaster.feedback;
   return (
     <section className="card business-form" aria-label="What people are saying">
       <div className="card-head">
         <h3>What people are saying</h3>
       </div>
-      <h4 className="eyebrow">Latest reviews</h4>
+      <h4 className="eyebrow">About {roaster.name}</h4>
+      {roasterReviews.length === 0 ? (
+        <p className="note">No reviews of your roastery yet.</p>
+      ) : (
+        <ul className="feedback-list" aria-label="Reviews of your roastery">
+          {roasterReviews.map((r) => (
+            <li key={r.id} className="feedback-item">
+              <div className="feedback-head">
+                <strong>{r.username}</strong>
+                <Stars value={r.rating} />
+              </div>
+              {(r.traceability || r.shipping) && (
+                <p className="muted">{[r.traceability && `Traceability ${r.traceability}/5`, r.shipping && `Shipping ${r.shipping}/5`].filter(Boolean).join(" · ")}</p>
+              )}
+              {r.body && <p className="muted">{r.body}</p>}
+            </li>
+          ))}
+        </ul>
+      )}
+      <h4 className="eyebrow">Latest reviews of your coffees</h4>
       {reviews.length === 0 ? (
         <p className="note">No reviews of your coffees yet.</p>
       ) : (

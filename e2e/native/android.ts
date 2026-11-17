@@ -196,7 +196,7 @@ const cases: [name: string, run: (d: Device) => Promise<void>][] = [
     async (d) => {
       await d.launch("/journal");
       // react-query retries the 401 a few times first.
-      await d.expect(["Sign in to see your shelf"], 30_000);
+      await d.expect(["Sign in to see your journal"], 30_000);
     },
   ],
   [
@@ -264,11 +264,31 @@ const cases: [name: string, run: (d: Device) => Promise<void>][] = [
       await d.launch("/");
       await d.expect(["Roaster spotlight", "Explore", "Journal", "Profile"], 60_000);
       await d.tap("Journal");
-      await d.expect(["Sign in to see your shelf"], 30_000);
+      await d.expect(["Sign in to see your journal"], 30_000);
       await d.tap("Profile");
       await d.expect(["Sign in to see your profile"]);
       await d.tap("Explore");
       await d.expect(["Roaster spotlight"]);
+    },
+  ],
+  [
+    "journal: logging a brew from a recipe asks you to sign in first",
+    async (d) => {
+      await d.launch(`/recipe/${seed.inStock.v60RecipeId}`);
+      // Last thing on the screen, so it ends up low; nothing covers it here.
+      await d.scrollTo("Log this brew", { maxY: 2300 });
+      await d.tap("Log this brew");
+      await d.expect(["The Ritual Awaits"]);
+    },
+  ],
+  [
+    "roaster reviews: signed out, reviewing a roaster asks you to sign in",
+    async (d) => {
+      await d.launch(`/roaster/${seed.secondRoaster.slug}`);
+      await d.scrollTo("What People Say");
+      await d.scrollTo(`Review ${seed.secondRoaster.name}`);
+      await d.tap(`Review ${seed.secondRoaster.name}`);
+      await d.expect(["The Ritual Awaits"]);
     },
   ],
   [

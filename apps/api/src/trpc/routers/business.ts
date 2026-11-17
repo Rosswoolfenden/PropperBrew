@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { z } from "zod";
-import { brewRecipes, checkouts, coffeeBeans, orderLines, orders, profiles, roasterMembers, roasters, reviews, type Db } from "@propperbrew/db";
+import { brewRecipes, checkouts, coffeeBeans, orderLines, orders, profiles, roasterMembers, roasterReviews, roasters, reviews, type Db } from "@propperbrew/db";
 import {
   CreateBrewRecipeInput,
   DeliveryInput,
@@ -93,6 +93,25 @@ export const businessRouter = router({
           .select({ orderId: orderLines.orderId, title: orderLines.title, quantity: orderLines.quantity })
           .from(orderLines)
           .where(inArray(orderLines.orderId, recentOrders.map((o) => o.order.id)))
+      : [];
+
+    const recentRoasterReviews = roasterIds.length
+      ? await ctx.db
+          .select({
+            id: roasterReviews.id,
+            roasterId: roasterReviews.roasterId,
+            rating: roasterReviews.rating,
+            traceability: roasterReviews.traceability,
+            shipping: roasterReviews.shipping,
+            body: roasterReviews.body,
+            createdAt: roasterReviews.createdAt,
+            username: profiles.username,
+          })
+          .from(roasterReviews)
+          .innerJoin(profiles, eq(profiles.id, roasterReviews.userId))
+          .where(inArray(roasterReviews.roasterId, roasterIds))
+          .orderBy(desc(roasterReviews.createdAt))
+          .limit(FEEDBACK_LIMIT * roasterIds.length)
       : [];
 
     const [recommendations, recentReviews, communityRecipes] = roasterIds.length
@@ -195,6 +214,7 @@ export const businessRouter = router({
               .slice(0, FEEDBACK_LIMIT)
               .map((r) => ({ ...r, rating: ratingFromDb(r.rating) })),
             recipes: communityRecipes.filter((r) => r.bean.roasterId === roaster.id).slice(0, FEEDBACK_LIMIT),
+            roasterReviews: recentRoasterReviews.filter((r) => r.roasterId === roaster.id).slice(0, FEEDBACK_LIMIT),
           },
         };
       }),

@@ -125,6 +125,32 @@ export default async function ProfilePage({ params }: { params: Params }) {
         )}
       </section>
 
+      {p.roasterReviews.length > 0 && (
+        <section className="section" aria-labelledby="roastery-heading">
+          <h2 id="roastery-heading">Roasteries</h2>
+          <ul className="profile-reviews">
+            {p.roasterReviews.map((r) => (
+              <li key={r.id} className="profile-review">
+                <div className="review-head">
+                  <span className="review-author">Roastery</span>
+                  <time className="muted" dateTime={r.createdAt.toISOString()}>
+                    {dateFormat.format(r.createdAt)}
+                  </time>
+                </div>
+                <h3>
+                  <Link href={`/${r.roaster.slug}`}>{r.roaster.name}</Link>
+                </h3>
+                {r.body && <blockquote className="review-body">“{r.body}”</blockquote>}
+                <div className="review-head">
+                  <Stars value={r.rating} />
+                  {r.verifiedPurchase && <span className="eyebrow verified">Verified purchase</span>}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section className="section" aria-labelledby="recipes-heading">
         <OwnerHeading id="recipes-heading" username={p.username}>
           Recipes

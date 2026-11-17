@@ -78,6 +78,20 @@
       "when": 1794343979047,
       "tag": "20261110205259_uploads",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794345781068,
+      "tag": "20261110212301_brew_journal",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794346404597,
+      "tag": "20261110213324_roaster_reviews",
+      "breakpoints": true
     }
   ]
 }

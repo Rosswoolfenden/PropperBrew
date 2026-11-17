@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Link, useLocalSearchParams } from "expo-router";
+import { Link, router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { deliveryNote, formatAltitude, formatPriceFrom, humanize, possessive, radius, type BrewMethod } from "@propperbrew/shared";
@@ -36,9 +36,13 @@ export default function BeanScreen() {
     ...trpc.reviews.forBean.queryOptions({ coffeeBeanId: bean.data?.id ?? "", limit: 20 }),
     enabled: !!bean.data,
   });
-  const { session } = useSession();
+  const { session, ready } = useSession();
   const mine = useQuery({
     ...trpc.reviews.mine.queryOptions({ coffeeBeanId: bean.data?.id ?? "" }),
+    enabled: !!bean.data && !!session,
+  });
+  const myBrews = useQuery({
+    ...trpc.brews.list.queryOptions({ coffeeBeanId: bean.data?.id ?? "", limit: 1 }),
     enabled: !!bean.data && !!session,
   });
   const addToShelf = useMutation(
@@ -104,7 +108,25 @@ export default function BeanScreen() {
             ))}
         </View>
 
-        <Button label="Add to my shelf" icon="inventory-2" variant="secondary" onPress={() => addToShelf.mutate({ coffeeBeanId: b.id })} />
+        <View style={{ gap: 12 }}>
+          <Button label="Add to my shelf" icon="inventory-2" variant="secondary" onPress={() => addToShelf.mutate({ coffeeBeanId: b.id })} />
+          <Button
+            label="Log a brew"
+            icon="edit-note"
+            variant="secondary"
+            disabled={!ready}
+            onPress={() => (session ? router.push({ pathname: "/brew/new", params: { beanId: b.id, beanName: b.name } }) : router.push("/sign-in"))}
+          />
+          {myBrews.data && myBrews.data.stats.total > 0 && (
+            <Link href="/journal" asChild>
+              <Pressable role="link" aria-label={`Your brews of this coffee: ${myBrews.data.stats.total}`}>
+                <Body muted style={{ fontSize: 15, textAlign: "center" }}>
+                  You&apos;ve brewed this {myBrews.data.stats.total === 1 ? "once" : `${myBrews.data.stats.total} times`}. See your journal →
+                </Body>
+              </Pressable>
+            </Link>
+          )}
+        </View>
 
         <View style={styles.block}>
           <Headline size="section">Order</Headline>

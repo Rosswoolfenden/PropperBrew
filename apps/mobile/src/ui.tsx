@@ -45,15 +45,22 @@ export function Body({
   children,
   italic,
   muted,
+  numberOfLines,
   style,
 }: {
   children: ReactNode;
   italic?: boolean;
   muted?: boolean;
+  /** Cut off with an ellipsis after this many lines. */
+  numberOfLines?: number;
   style?: StyleProp<TextStyle>;
 }) {
   const styles = useStyles();
-  return <Text style={[styles.body, italic && styles.italic, muted && styles.muted, style]}>{children}</Text>;
+  return (
+    <Text numberOfLines={numberOfLines} style={[styles.body, italic && styles.italic, muted && styles.muted, style]}>
+      {children}
+    </Text>
+  );
 }
 
 /** Terracotta flavour chip. `small` is the squared tag style; add `pill` for the rounded one on cards. */

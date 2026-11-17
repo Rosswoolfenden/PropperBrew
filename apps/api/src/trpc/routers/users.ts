@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
-import { brewRecipes, coffeeBeans, profiles, reviews, roasters } from "@propperbrew/db";
+import { brewRecipes, coffeeBeans, orders, profiles, reviews, roasterReviews, roasters } from "@propperbrew/db";
 import { ratingFromDb } from "@propperbrew/shared";
 import { publicProcedure, router } from "../init";
 
@@ -72,7 +72,36 @@ export const usersRouter = router({
       `).then((r) => [...r]),
     ]);
 
+    // Their reviews of roasters, with "Verified purchase" where they bought from them here.
+    const roasterRows = await ctx.db
+      .select({
+        id: roasterReviews.id,
+        rating: roasterReviews.rating,
+        traceability: roasterReviews.traceability,
+        shipping: roasterReviews.shipping,
+        body: roasterReviews.body,
+        notes: roasterReviews.notes,
+        createdAt: roasterReviews.createdAt,
+        roaster: { id: roasters.id, slug: roasters.slug, name: roasters.name, logoUrl: roasters.logoUrl },
+      })
+      .from(roasterReviews)
+      .innerJoin(roasters, eq(roasters.id, roasterReviews.roasterId))
+      .where(eq(roasterReviews.userId, profile.id))
+      .orderBy(desc(roasterReviews.createdAt))
+      .limit(PROFILE_LIMIT);
+    const bought = new Set(
+      roasterRows.length
+        ? (
+            await ctx.db
+              .selectDistinct({ roasterId: orders.roasterId })
+              .from(orders)
+              .where(and(eq(orders.userId, profile.id), inArray(orders.status, ["paid", "pushed_to_shopify", "fulfilled", "partially_fulfilled"])))
+          ).map((o) => o.roasterId)
+        : [],
+    );
+
     return {
+      roasterReviews: roasterRows.map(({ roaster: { id, ...roaster }, ...r }) => ({ ...r, roaster, verifiedPurchase: bought.has(id) })),
       username: profile.username,
       displayName: profile.displayName,
       bio: profile.bio,

@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
-import { brewRecipes, profiles, reports, reviews } from "@propperbrew/db";
+import { brewRecipes, profiles, reports, reviews, roasterReviews } from "@propperbrew/db";
 import { ReportInput } from "@propperbrew/shared";
 import { limitedProcedure, router } from "../init";
 
@@ -19,7 +19,11 @@ export const reportsRouter = router({
             ? undefined
             : input.targetType === "review"
               ? await ctx.db.query.reviews.findFirst({ where: eq(reviews.id, input.targetId), columns: { id: true, userId: true } }).then((r) => r && { id: r.id, owner: r.userId })
-              : await ctx.db.query.brewRecipes.findFirst({ where: eq(brewRecipes.id, input.targetId), columns: { id: true, userId: true } }).then((r) => r && { id: r.id, owner: r.userId });
+              : input.targetType === "roaster_review"
+                ? await ctx.db.query.roasterReviews
+                    .findFirst({ where: eq(roasterReviews.id, input.targetId), columns: { id: true, userId: true } })
+                    .then((r) => r && { id: r.id, owner: r.userId })
+                : await ctx.db.query.brewRecipes.findFirst({ where: eq(brewRecipes.id, input.targetId), columns: { id: true, userId: true } }).then((r) => r && { id: r.id, owner: r.userId });
       if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "That's no longer here." });
       if (target.owner === ctx.user.id) throw new TRPCError({ code: "BAD_REQUEST", message: "You can't report your own posts." });
 

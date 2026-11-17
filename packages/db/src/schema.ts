@@ -306,6 +306,63 @@ export const shelfEntries = pgTable(
   (t) => [index("shelf_entries_user_idx").on(t.userId, t.finishedAt)],
 );
 
+/** Reviews of a roaster as a whole (Stitch "Rate Roaster"). One per person per roaster; posting again edits it. */
+export const roasterReviews = pgTable(
+  "roaster_reviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    roasterId: uuid("roaster_id")
+      .notNull()
+      .references(() => roasters.id, { onDelete: "cascade" }),
+    rating: smallint("rating").notNull(),
+    traceability: smallint("traceability"),
+    shipping: smallint("shipping"),
+    body: text("body"),
+    notes: text("notes").array().notNull().default(sql`'{}'::text[]`),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("roaster_reviews_once_idx").on(t.userId, t.roasterId),
+    index("roaster_reviews_roaster_idx").on(t.roasterId, t.createdAt),
+    check("roaster_reviews_scores", sql`${t.rating} between 1 and 5 and coalesce(${t.traceability}, 1) between 1 and 5 and coalesce(${t.shipping}, 1) between 1 and 5`),
+  ],
+);
+
+/** Someone's brew journal: each brew, from which bag, following which recipe, and how it came out. */
+export const brews = pgTable(
+  "brews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    coffeeBeanId: uuid("coffee_bean_id")
+      .notNull()
+      .references(() => coffeeBeans.id, { onDelete: "cascade" }),
+    shelfEntryId: uuid("shelf_entry_id").references(() => shelfEntries.id, { onDelete: "set null" }),
+    recipeId: uuid("recipe_id").references(() => brewRecipes.id, { onDelete: "set null" }),
+    brewMethod: brewMethodEnum("brew_method").notNull(),
+    /** Decigrams, as in brew_recipes. */
+    coffeeDoseDg: integer("coffee_dose_dg").notNull(),
+    waterWeightG: integer("water_weight_g").notNull(),
+    waterTempC: smallint("water_temp_c"),
+    grinderModel: text("grinder_model"),
+    grindSetting: text("grind_setting"),
+    totalBrewTimeSeconds: integer("total_brew_time_seconds"),
+    rating: smallint("rating"),
+    notes: text("notes"),
+    brewedAt: timestamp("brewed_at", { withTimezone: true }).notNull().defaultNow(),
+    ...timestamps,
+  },
+  (t) => [
+    index("brews_user_idx").on(t.userId, t.brewedAt),
+    check("brews_rating_range", sql`${t.rating} between 1 and 5`),
+  ],
+);
+
 /** Photos people upload (avatars, review photos, roaster logos). Attaching one checks it's theirs. */
 export const uploads = pgTable(
   "uploads",
@@ -495,4 +552,9 @@ export const brewRecipesRelations = relations(brewRecipes, ({ one }) => ({
 
 export const shelfEntriesRelations = relations(shelfEntries, ({ one }) => ({
   bean: one(coffeeBeans, { fields: [shelfEntries.coffeeBeanId], references: [coffeeBeans.id] }),
+}));
+
+export const brewsRelations = relations(brews, ({ one }) => ({
+  bean: one(coffeeBeans, { fields: [brews.coffeeBeanId], references: [coffeeBeans.id] }),
+  recipe: one(brewRecipes, { fields: [brews.recipeId], references: [brewRecipes.id] }),
 }));

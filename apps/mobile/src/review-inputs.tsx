@@ -65,6 +65,53 @@ export function SensorySlider({
   );
 }
 
+/** A 1–5 score with its own end labels (the roaster review's traceability and shipping). Tap again to clear. */
+export function ScoreSlider({
+  label,
+  hint,
+  low,
+  high,
+  value,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  low: string;
+  high: string;
+  value: number | null;
+  onChange: (score: number | null) => void;
+}) {
+  const styles = useStyles();
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={{ gap: 2 }}>
+        <Text style={styles.label}>{label}</Text>
+        <Text style={styles.hint}>{hint}</Text>
+      </View>
+      <View role="radiogroup" aria-label={label} style={styles.track}>
+        <View style={styles.line} />
+        {[1, 2, 3, 4, 5].map((n) => (
+          <Pressable
+            key={n}
+            role="radio"
+            aria-checked={value === n}
+            aria-label={`${label} ${n} of 5`}
+            onPress={() => onChange(value === n ? null : n)}
+            style={styles.stop}
+          >
+            <View style={value === n ? styles.thumb : styles.dot} />
+          </Pressable>
+        ))}
+      </View>
+      <View style={styles.spaced}>
+        <Text style={styles.end}>{low}</Text>
+        <Text style={styles.level}>{value ? `${value.toFixed(1)} / 5.0` : "Not rated"}</Text>
+        <Text style={styles.end}>{high}</Text>
+      </View>
+    </View>
+  );
+}
+
 const useStyles = themed((c) =>
   StyleSheet.create({
     starCard: {
@@ -78,6 +125,7 @@ const useStyles = themed((c) =>
     spaced: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" },
     label: { fontFamily: fonts.labelBold, fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", color: c.primary },
     level: { fontFamily: fonts.bodyItalic, fontSize: 15, color: c.onSurfaceVariant },
+    hint: { fontFamily: fonts.body, fontSize: 15, lineHeight: 20, color: c.onSurfaceVariant },
     track: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", height: 36 },
     line: { position: "absolute", left: 18, right: 18, height: 2, borderRadius: 1, backgroundColor: c.surfaceContainerHighest },
     stop: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },

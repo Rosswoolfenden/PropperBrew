@@ -14,6 +14,7 @@ import {
   sensoryLevel,
 } from "@propperbrew/shared";
 import { AddToBasket } from "@/components/add-to-basket";
+import { AddToShelf } from "@/components/add-to-shelf";
 import { OrderForm } from "@/components/order-form";
 import { Rating, Stars } from "@/components/rating";
 import { ReportButton } from "@/components/report-button";
@@ -129,6 +130,7 @@ export default async function BeanPage({ params }: { params: Params }) {
             ) : (
               <p className="note">This lot has sold out. Reviews and recipes stay here for reference.</p>
             )}
+            <AddToShelf coffeeBeanId={bean.id} name={bean.name} />
           </section>
         </div>
       </div>

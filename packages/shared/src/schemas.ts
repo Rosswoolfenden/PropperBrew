@@ -178,7 +178,7 @@ export const RoasterProfileInput = z.object({
 export type RoasterProfileInput = z.input<typeof RoasterProfileInput>;
 
 /** What can be reported, and why (shown as choices, in this order). */
-export const REPORT_TARGETS = ["review", "recipe", "profile"] as const;
+export const REPORT_TARGETS = ["review", "recipe", "profile", "roaster_review"] as const;
 export type ReportTarget = (typeof REPORT_TARGETS)[number];
 export const REPORT_REASONS = ["spam", "offensive", "misleading", "other"] as const;
 export const REPORT_REASON_LABELS: Record<(typeof REPORT_REASONS)[number], string> = {
@@ -206,3 +206,49 @@ export const UPLOAD_KINDS = ["avatar", "review", "logo"] as const;
 export type UploadKind = (typeof UPLOAD_KINDS)[number];
 /** Largest photo we take, before resizing. */
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+/** One brew in someone's journal: what they did, and how it came out. */
+export const BrewLogInput = z.object({
+  coffeeBeanId: z.uuid(),
+  /** The bag on their shelf it came from, if any. */
+  shelfEntryId: z.uuid().nullable().optional(),
+  /** The recipe they followed, if any. */
+  recipeId: z.uuid().nullable().optional(),
+  brewMethod: BrewMethod,
+  coffeeDoseG: z.number().positive().max(100),
+  waterWeightG: z.number().positive().max(5000),
+  waterTempC: z.number().min(0).max(100).nullable().optional(),
+  grinderModel: z.string().trim().max(80).nullable().optional(),
+  grindSetting: z.string().trim().max(40).nullable().optional(),
+  totalBrewTimeSeconds: z.number().int().positive().max(60 * 60 * 24).nullable().optional(),
+  /** How it tasted, 1–5 stars. */
+  rating: z.number().int().min(1).max(5).nullable().optional(),
+  notes: z.string().trim().max(2000).nullable().optional(),
+  /** When they brewed it (now, unless they're logging one from earlier). Not in the future. */
+  brewedAt: z.coerce
+    .date()
+    .refine((d) => d.getTime() <= Date.now() + 60_000, "That's in the future")
+    .optional(),
+});
+export type BrewLogInput = z.input<typeof BrewLogInput>;
+
+/** Reviewing a roaster (Stitch "Rate Roaster"): the overall experience, plus two optional scores. */
+export const ROASTER_REVIEW_MAX_BODY = 240;
+export const RoasterReviewInput = z.object({
+  roasterId: z.uuid(),
+  rating: z.number().int().min(1).max(5),
+  /** Direct-trade transparency and farm-level detail: 1 opaque … 5 direct. */
+  traceability: z.number().int().min(1).max(5).nullable().optional(),
+  /** Delivery speed and packaging: 1 poor … 5 exceptional. */
+  shipping: z.number().int().min(1).max(5).nullable().optional(),
+  body: z
+    .string()
+    .trim()
+    .max(ROASTER_REVIEW_MAX_BODY)
+    .transform((s) => s || null)
+    .nullable()
+    .optional(),
+  /** "Signature notes found" across their coffees. */
+  notes: z.array(z.string().trim().min(1).max(40)).max(8).default([]),
+});
+export type RoasterReviewInput = z.input<typeof RoasterReviewInput>;
