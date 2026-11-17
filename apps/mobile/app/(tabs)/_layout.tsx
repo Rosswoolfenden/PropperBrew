@@ -1,7 +1,10 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, Tabs } from "expo-router";
 import type { ComponentProps } from "react";
-import type { ColorValue } from "react-native";
+import { View, type ColorValue } from "react-native";
+import { useQuery } from "@tanstack/react-query";
+import { useSession } from "@/session";
+import { useTRPC } from "@/trpc";
 import { useBasketSummary } from "@/basket";
 import { fonts, useColors } from "@/theme";
 import { HeaderIcon } from "@/ui";
@@ -12,6 +15,23 @@ const icon = (name: IconName) =>
     return <MaterialIcons name={name} size={24} color={color} />;
   };
 const scan = () => <HeaderIcon icon="photo-camera" label="Scan a bag" onPress={() => router.push("/scan")} />;
+
+/** The bell on Explore, with how many notifications are unread. */
+function Bell() {
+  const trpc = useTRPC();
+  const colors = useColors();
+  const { session } = useSession();
+  const list = useQuery({ ...trpc.notifications.list.queryOptions(), enabled: !!session, refetchInterval: 60_000 });
+  const unread = list.data?.unread ?? 0;
+  return (
+    <View>
+      <HeaderIcon icon="notifications-none" label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"} onPress={() => router.push("/notifications")} />
+      {unread > 0 && (
+        <View pointerEvents="none" style={{ position: "absolute", top: 6, right: 6, width: 10, height: 10, borderRadius: 5, backgroundColor: colors.secondary }} />
+      )}
+    </View>
+  );
+}
 
 /** The bottom tabs from the Stitch designs: Explore, Journal, Basket (when checkout is on), Profile. */
 export default function TabsLayout() {
@@ -39,6 +59,7 @@ export default function TabsLayout() {
           headerTitle: "PropperBrew",
           headerTitleStyle: { fontFamily: fonts.headline, fontSize: 20, color: colors.primary },
           headerLeft: scan,
+          headerRight: () => <Bell />,
           tabBarIcon: icon("explore"),
           // Named explicitly: otherwise the icon font's glyph ends up in the name.
           tabBarAccessibilityLabel: "Explore",

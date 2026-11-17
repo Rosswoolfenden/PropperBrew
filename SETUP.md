@@ -70,6 +70,8 @@ README, "Local preview"). Tick items off as they're done; when one is, send over
 - [ ] **Apple Developer account** (£79/year). Needed for TestFlight, the App Store, push notifications and Sign in with Apple. The bundle id is set as `uk.co.propperbrew.app`.
 - [ ] **Google Play developer account** (one-off fee). The package is set as `uk.co.propperbrew.app`.
 - [ ] **Expo (EAS) account** to build and submit the apps, and to hold the push notification keys.
+  - Run `eas init` in `apps/mobile`. It adds the project id the app needs to register for push notifications.
+  - Make a development build (`eas build --profile development`). Push doesn't work in Expo Go on Android, and iOS needs the Apple account for its push key.
 
 ## Sign in with Apple and Google
 

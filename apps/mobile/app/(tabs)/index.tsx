@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import { useRef } from "react";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { NewArrivals, RoasterCollection, RoasterRow, RoasterSpotlight } from "@/discover";
+import { FollowingSection, NewArrivals, RoasterCollection, RoasterRow, RoasterSpotlight } from "@/discover";
 import { fonts, themed, useColors } from "@/theme";
 import { useTRPC } from "@/trpc";
 import { Body, Button, GUTTER, Loading } from "@/ui";
@@ -48,6 +48,7 @@ export default function DiscoverScreen() {
         </Body>
       ) : (
         <>
+          <FollowingSection />
           <RoasterSpotlight roasters={roasters.data.slice(0, SPOTLIGHT_COUNT)} onSelect={jumpTo} />
           <RoasterCollection roasters={roasters.data} />
           <NewArrivals roasters={roasters.data} />

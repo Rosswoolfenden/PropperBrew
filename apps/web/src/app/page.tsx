@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FollowingSection } from "@/components/following-section";
 import { formatPriceFrom, humanize, notesSentence } from "@propperbrew/shared";
 import { RoasterSpotlight } from "@/components/spotlight";
 import { api, type RouterOutputs } from "@/lib/trpc";
@@ -31,6 +32,7 @@ export default async function DiscoverPage() {
           Search
         </button>
       </form>
+      <FollowingSection />
       {roasters.length === 0 ? (
         <p className="muted">No coffees to order yet. Roasters appear here once they connect their shop.</p>
       ) : (

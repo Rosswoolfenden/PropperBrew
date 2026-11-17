@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
 import { and, eq, notInArray, sql } from "drizzle-orm";
-import { coffeeBeans, roasters, shopifyProducts, shopifyVariants } from "@propperbrew/db";
+import { coffeeBeans, roasterFollows, roasters, shopifyProducts, shopifyVariants } from "@propperbrew/db";
 import { slugify, type ExtractedBeanSpecs } from "@propperbrew/shared";
 import { env } from "../env";
 import { db } from "../lib/db";
+import { notify } from "../lib/notify";
 import { extractBeanSpecs } from "../enrichment/claude";
 import { adminForRoaster } from "./admin";
 import {
@@ -83,12 +84,29 @@ async function resolveBean(
       .values({ roasterId: roaster.id, slug, name, ...content, ...columns })
       .returning({ id: coffeeBeans.id });
     beanId = created!.id;
+    justCreated.add(beanId);
   }
 
   if (existing?.coffeeBeanId && existing.coffeeBeanId !== beanId) {
     await db.update(coffeeBeans).set({ isArchived: true }).where(eq(coffeeBeans.id, existing.coffeeBeanId));
   }
   return beanId;
+}
+
+/** Beans resolveBean has just made, so syncProduct can tell followers once the bag is buyable. */
+const justCreated = new Set<string>();
+
+/** "New from Hackney Heights": tell the roaster's followers about a new coffee they can buy. */
+async function announceNewCoffee(roaster: Roaster, beanId: string) {
+  const bean = await db.query.coffeeBeans.findFirst({ where: eq(coffeeBeans.id, beanId), columns: { name: true, slug: true, isArchived: true } });
+  const buyable = await db.query.shopifyVariants.findFirst({ where: and(eq(shopifyVariants.coffeeBeanId, beanId), eq(shopifyVariants.inStock, true)), columns: { id: true } });
+  if (!bean || bean.isArchived || !buyable) return;
+  const followers = await db.select({ userId: roasterFollows.userId }).from(roasterFollows).where(eq(roasterFollows.roasterId, roaster.id));
+  await notify(
+    db,
+    followers.map((f) => f.userId),
+    { kind: "new_coffee", title: `New from ${roaster.name}`, body: `${bean.name} has just arrived.`, path: `/bean/${roaster.slug}/${bean.slug}` },
+  );
 }
 
 /** Upsert a product + its variants. Called from webhooks and the install backfill. */
@@ -147,6 +165,10 @@ export async function syncProduct(roaster: Roaster, product: NormalizedProduct):
     };
     const { shopifyVariantId: _, ...update } = values;
     await db.insert(shopifyVariants).values(values).onConflictDoUpdate({ target: shopifyVariants.shopifyVariantId, set: update });
+  }
+
+  if (beanId && justCreated.delete(beanId)) {
+    await announceNewCoffee(roaster, beanId).catch((err) => console.error("Couldn't tell followers about a new coffee:", err));
   }
 
   // Variants removed on Shopify: keep the row (order history references it) but make it unbuyable.

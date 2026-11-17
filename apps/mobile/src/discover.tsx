@@ -1,10 +1,12 @@
-import { formatPriceFrom, humanize, notesSentence, radius } from "@propperbrew/shared";
+import { formatGbp, formatPriceFrom, humanize, notesSentence, radius } from "@propperbrew/shared";
+import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import { Link } from "expo-router";
 import { useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, useColorScheme, useWindowDimensions, View } from "react-native";
 import { fonts, themed, useColors } from "./theme";
-import type { RouterOutputs } from "./trpc";
+import { useSession } from "./session";
+import { useTRPC, type RouterOutputs } from "./trpc";
 import { Body, Chip, Eyebrow, Frame, GUTTER, Headline } from "./ui";
 
 export type DiscoverRoaster = RouterOutputs["roasters"]["discover"][number];
@@ -240,3 +242,39 @@ const useStyles = themed((c) =>
     chips: { flexDirection: "row", flexWrap: "wrap", gap: 4, paddingTop: 4 },
   }),
 );
+
+/** For people who follow roasters: their coffees added in the last month, newest first. */
+export function FollowingSection() {
+  const styles = useStyles();
+  const trpc = useTRPC();
+  const { session } = useSession();
+  const mine = useQuery({ ...trpc.follows.mine.queryOptions(), enabled: !!session });
+  if (!mine.data || mine.data.roasters.length === 0) return null;
+  const { roasters, newCoffees } = mine.data;
+  return (
+    <View role="region" aria-label="From roasters you follow" style={{ paddingHorizontal: GUTTER, gap: 24 }}>
+      <Headline size="section">From roasters you follow</Headline>
+      {newCoffees.length === 0 ? (
+        <Body italic muted>
+          Nothing new from {roasters.map((r) => r.name).join(", ")} this month. We&apos;ll tell you when there is.
+        </Body>
+      ) : (
+        newCoffees.map((coffee) => (
+          <Link key={coffee.id} href={beanHref(coffee.roaster.slug, coffee.slug)} asChild>
+            <Pressable style={styles.arrival}>
+              <Frame uri={coffee.imageUrl} style={styles.arrivalImage} />
+              <View style={{ flex: 1, gap: 4, alignItems: "flex-start" }}>
+                {coffee.roastLevel && <Chip small label={`${humanize(coffee.roastLevel)} roast`} />}
+                <Text style={styles.arrivalName}>{coffee.name}</Text>
+                <Body muted style={{ fontSize: 14, lineHeight: 19 }}>
+                  {coffee.roaster.name}
+                </Body>
+                {coffee.fromPricePence !== null && <Text style={styles.arrivalPrice}>{formatGbp(coffee.fromPricePence)}</Text>}
+              </View>
+            </Pressable>
+          </Link>
+        ))
+      )}
+    </View>
+  );
+}

@@ -23,6 +23,7 @@ import {
   REPORT_REASONS,
   REPORT_TARGETS,
   UPLOAD_KINDS,
+  NOTIFICATION_KINDS,
   PROCESSES,
   ROAST_LEVELS,
   ROASTER_ROLES,
@@ -329,6 +330,40 @@ export const roasterReviews = pgTable(
     index("roaster_reviews_roaster_idx").on(t.roasterId, t.createdAt),
     check("roaster_reviews_scores", sql`${t.rating} between 1 and 5 and coalesce(${t.traceability}, 1) between 1 and 5 and coalesce(${t.shipping}, 1) between 1 and 5`),
   ],
+);
+
+/** People following a roaster, to hear about its new coffees. */
+export const roasterFollows = pgTable(
+  "roaster_follows",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    roasterId: uuid("roaster_id")
+      .notNull()
+      .references(() => roasters.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.roasterId] }), index("roaster_follows_roaster_idx").on(t.roasterId)],
+);
+
+/** Someone's notifications, newest first: the in-app list, and what was pushed to their phone. */
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: NOTIFICATION_KINDS }).notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    /** The app screen it opens, e.g. "/bean/north-star/el-diviso". */
+    path: text("path").notNull(),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("notifications_user_idx").on(t.userId, t.createdAt)],
 );
 
 /** Someone's brew journal: each brew, from which bag, following which recipe, and how it came out. */

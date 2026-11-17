@@ -5,6 +5,7 @@ import { Link, router, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
 import { formatPriceFrom, humanize, notesSentence, radius } from "@propperbrew/shared";
+import { FollowButton } from "@/follow";
 import { ReportButton } from "@/report";
 import { useSession } from "@/session";
 import { fonts, themed, useColors } from "@/theme";
@@ -47,6 +48,8 @@ export default function RoasterScreen() {
           {r.city ? <Chip small pill label={r.city} /> : null}
         </View>
       </View>
+
+      <FollowButton roasterId={r.id} name={r.name} />
 
       {r.tagline || r.bio ? (
         <View style={{ gap: 16 }}>

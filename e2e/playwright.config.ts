@@ -13,7 +13,7 @@ export default defineConfig({
   reporter: [["list"]],
   use: { trace: "retain-on-failure" },
   projects: [
-    { name: "web", testMatch: /(web|accounts|reviews|roasters|search|profiles|checkout|auth|reports|uploads|journal|roaster-reviews)\.spec\.ts/, use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${ports.web}` } },
+    { name: "web", testMatch: /(web|accounts|reviews|roasters|search|profiles|checkout|auth|reports|uploads|journal|roaster-reviews|follows)\.spec\.ts/, use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${ports.web}` } },
     { name: "mobile", testMatch: "mobile.spec.ts", use: { ...phone, baseURL: `http://localhost:${ports.mobile}` } },
   ],
   webServer: [
@@ -28,6 +28,11 @@ export default defineConfig({
       url: `http://localhost:${ports.fakeStripe}/health`,
     },
     {
+      name: "fake-push",
+      command: "corepack pnpm exec tsx fake-push.ts",
+      url: `http://localhost:${ports.fakePush}/health`,
+    },
+    {
       name: "api",
       cwd: "../apps/api",
       command: "corepack pnpm exec tsx src/index.ts",
@@ -39,7 +44,9 @@ export default defineConfig({
       cwd: "../apps/web",
       // A production build: closer to what ships, and it doesn't clash with a local `next dev`.
       // Servers start in order, so the API is up for the build's prerender.
-      command: `corepack pnpm exec next build && corepack pnpm exec next start --port ${ports.web}`,
+      // Next.js sometimes stops a build once to show an upgrade notice, then builds when run again;
+      // a real build error fails both times.
+      command: `(corepack pnpm exec next build || corepack pnpm exec next build) && corepack pnpm exec next start --port ${ports.web}`,
       url: `http://localhost:${ports.web}`,
       env: webEnv,
       timeout: 240_000,

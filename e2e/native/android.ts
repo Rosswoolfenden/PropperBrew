@@ -292,6 +292,23 @@ const cases: [name: string, run: (d: Device) => Promise<void>][] = [
     },
   ],
   [
+    "follow: signed out, following a roaster asks you to sign in",
+    async (d) => {
+      await d.launch(`/roaster/${seed.secondRoaster.slug}`);
+      await d.scrollTo(`Follow ${seed.secondRoaster.name}`);
+      await d.tap(`Follow ${seed.secondRoaster.name}`);
+      await d.expect(["The Ritual Awaits"]);
+    },
+  ],
+  [
+    "notifications: signed out offers sign in",
+    async (d) => {
+      // Not through the bell: Expo Go's floating dev-tools button sits over the header's right side.
+      await d.launch("/notifications");
+      await d.expect(["Sign in to see your notifications"]);
+    },
+  ],
+  [
     "scan screen opens",
     async (d) => {
       await d.launch("/scan");
@@ -315,6 +332,7 @@ async function main() {
   console.info("Starting the API and Metro…");
   start(join(repo, "e2e"), ["tsx", "fake-stripe.ts"], {});
   start(join(repo, "e2e"), ["tsx", "fake-shopify.ts"], {});
+  start(join(repo, "e2e"), ["tsx", "fake-push.ts"], {});
   start(join(repo, "apps/api"), ["tsx", "src/index.ts"], apiEnv);
   // --clear so the device always gets a bundle built from the current code.
   start(join(repo, "apps/mobile"), ["expo", "start", "--port", String(METRO_PORT), "--clear"], { ...appEnv, CI: "1" });

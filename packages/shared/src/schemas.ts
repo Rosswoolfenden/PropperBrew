@@ -252,3 +252,7 @@ export const RoasterReviewInput = z.object({
   notes: z.array(z.string().trim().min(1).max(40)).max(8).default([]),
 });
 export type RoasterReviewInput = z.input<typeof RoasterReviewInput>;
+
+/** What a notification is about (each has a screen it opens). */
+export const NOTIFICATION_KINDS = ["new_coffee", "peak", "order_shipped"] as const;
+export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];

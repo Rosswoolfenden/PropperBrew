@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull, lt, sql } from "drizzle-orm";
-import { orders, profiles, roasters, shopifyProducts, shopifyVariants, webhookEvents } from "@propperbrew/db";
+import { orders, roasters, shopifyProducts, shopifyVariants, webhookEvents } from "@propperbrew/db";
 import { db } from "../lib/db";
-import { sendExpoPush } from "../lib/push";
+import { notify } from "../lib/notify";
 import { fromRestProduct, type RestProduct } from "./normalize";
 import { archiveProduct, syncInventoryLevel, syncProduct } from "./sync";
 
@@ -93,7 +93,7 @@ async function handleTopic(topic: string, shopDomain: string, payload: any): Pro
       await markOrderFulfilled(shopDomain, String(payload.id), topic === "orders/fulfilled" ? "fulfilled" : "partially_fulfilled");
       return;
     case "fulfillments/create":
-      await notifyShipped(shopDomain, String(payload.order_id), payload.tracking_url ?? null);
+      await notifyShipped(shopDomain, String(payload.order_id));
       return;
     case "app/uninstalled":
       await handleUninstall(shopDomain);
@@ -129,20 +129,16 @@ async function markOrderFulfilled(shopDomain: string, shopifyOrderId: string, st
   await db.update(orders).set({ status }).where(eq(orders.id, order.id));
 }
 
-async function notifyShipped(shopDomain: string, shopifyOrderId: string, trackingUrl: string | null) {
+async function notifyShipped(shopDomain: string, shopifyOrderId: string) {
   const order = await findOrder(shopDomain, shopifyOrderId);
   // Not ours, or the buyer has since deleted their account.
   if (!order?.userId) return;
-  const userId = order.userId;
-  const [user, roaster] = await Promise.all([
-    db.query.profiles.findFirst({ where: eq(profiles.id, userId) }),
-    db.query.roasters.findFirst({ where: eq(roasters.id, order.roasterId) }),
-  ]);
-  if (!user?.expoPushToken) return;
-  await sendExpoPush(user.expoPushToken, {
+  const roaster = await db.query.roasters.findFirst({ where: eq(roasters.id, order.roasterId), columns: { name: true } });
+  await notify(db, [order.userId], {
+    kind: "order_shipped",
     title: "Your beans are on the way ☕",
     body: `${roaster?.name ?? "Your roaster"} has roasted & shipped your order.`,
-    data: { orderId: order.id, trackingUrl },
+    path: `/order/${order.checkoutId}`,
   });
 }
 

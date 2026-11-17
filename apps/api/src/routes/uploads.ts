@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { mkdirSync } from "node:fs";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -53,6 +54,7 @@ uploadRoutes.post(
 // Local driver: the API serves the photos itself. Names are random and never change, so cache for good.
 const root = localUploadsRoot();
 if (root) {
+  mkdirSync(root, { recursive: true });
   uploadRoutes.use(
     "/uploads/*",
     serveStatic({

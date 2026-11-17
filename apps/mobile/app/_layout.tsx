@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { Text } from "react-native";
 import { fontAssets, fonts, useColors } from "@/theme";
+import { PushRegistration } from "@/push";
 import { ApiProvider } from "@/trpc";
 import { HeaderIcon } from "@/ui";
 
@@ -26,6 +27,7 @@ export default function RootLayout() {
   return (
     <ApiProvider>
       <StatusBar style="auto" />
+      <PushRegistration />
       <Stack
         screenOptions={{
           headerShadowVisible: false,
@@ -46,6 +48,7 @@ export default function RootLayout() {
         <Stack.Screen name="order/[id]" options={{ title: "Your order", headerBackVisible: false }} />
         <Stack.Screen name="orders" options={{ title: "Your orders" }} />
         <Stack.Screen name="account" options={{ title: "Account" }} />
+        <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
         <Stack.Screen
           name="brew/new"
           options={{ title: "Journal", presentation: "modal", headerLeft: () => <HeaderIcon icon="close" label="Close" onPress={() => router.back()} /> }}

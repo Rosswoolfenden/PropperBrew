@@ -3,7 +3,7 @@ import { createCipheriv, createHmac, randomBytes } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-export const ports = { db: 54329, supabase: 54339, api: 4100, web: 3100, mobile: 8181, fakeShopify: 4199, fakeStripe: 4198, mail: 54349 } as const;
+export const ports = { db: 54329, supabase: 54339, api: 4100, web: 3100, mobile: 8181, fakeShopify: 4199, fakeStripe: 4198, fakePush: 4197, mail: 54349 } as const;
 export const apiUrl = `http://localhost:${ports.api}`;
 export const webUrl = `http://localhost:${ports.web}`;
 /** The auth service, behind the Supabase-style gateway (see compose.yaml). */
@@ -29,6 +29,8 @@ export const apiEnv = {
   STRIPE_SECRET_KEY: "sk_test_e2e",
   STRIPE_WEBHOOK_SECRET: "whsec_e2e",
   STRIPE_API_BASE: `http://localhost:${ports.fakeStripe}`,
+  // Push notifications go to e2e/fake-push.ts.
+  EXPO_PUSH_URL: `http://localhost:${ports.fakePush}/push/send`,
   // Uploaded photos (wiped by setup-db.ts).
   UPLOADS_DIR: join(tmpdir(), "propperbrew-e2e-uploads"),
 };

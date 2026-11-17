@@ -36,6 +36,8 @@ const Env = z
     UPLOADS_DRIVER: z.enum(["local", "supabase"]).default("local"),
     UPLOADS_DIR: z.string().default("./uploads"),
     UPLOADS_BUCKET: z.string().default("uploads"),
+    /** Expo's push service. Tests point it at e2e/fake-push.ts. */
+    EXPO_PUSH_URL: z.url().default("https://exp.host/--/api/v2/push/send"),
     /** Tests only: talk to a fake Stripe at this origin (e2e/fake-stripe.ts). Refused in production. */
     STRIPE_API_BASE: z.url().optional(),
   })

@@ -557,3 +557,5 @@ button.button:disabled { opacity: 0.6; cursor: default; }
 .chars-left { justify-self: end; font-size: 0.85rem; }
 .chip-remove { background: none; border: 0; padding: 0 0 0 4px; cursor: pointer; color: inherit; font-size: 1rem; line-height: 1; }
 .add-note input { flex: 1; min-width: 0; font: 1rem var(--font-body); background: var(--surface-container-highest); border: 0; border-radius: 6px; padding: 12px 14px; }
+.follow-button { width: auto; justify-self: start; margin-top: 8px; }
+.following { margin-bottom: 48px; }

@@ -75,7 +75,15 @@ Schema changes: edit `packages/db/src/schema.ts`, run `pnpm db:generate`, then `
 - *Finishing a bag* takes it off the shelf; its brews stay. Brews are private (`brews.*`, owner only).
 - *On the website*, "Add to my shelf" on a coffee's page takes a roast date.
 
-**Rest window.** Shelf entries with a roast date get a push notification when the coffee enters its peak window (`packages/shared/src/resting.ts`).
+**Following and notifications.** People can follow a roaster (Follow button on its page, website and app). Its coffees added in the last 30 days show under "From roasters you follow" on Explore and the website's home page.
+
+- *Notifications* go through `notify()` (`apps/api/src/lib/notify.ts`). Each one is saved in `notifications`, which is the app's bell on Explore with an unread dot, and is also pushed to the person's phone if it has registered.
+- *What sends them:*
+  - a followed roaster's new coffee, when the Shopify sync creates it and it's buyable (once, not on later updates)
+  - a bag on your shelf entering its peak window (the hourly rest-window job, `packages/shared/src/resting.ts`)
+  - an order the roaster has shipped (Shopify fulfilment webhooks)
+- *Tapping a notification* opens the screen it's about.
+- *Push.* The app asks for permission and registers its Expo push token (`me.update`) when signed in, and clears it on sign out. This needs a development or store build with an EAS project id; Expo Go and the web build skip it. `EXPO_PUSH_URL` points the API at Expo's push service (a fake one, `e2e/fake-push.ts`, in the tests).
 
 **Accounts.** Coffee drinkers and roasters sign in with Supabase Auth. Each auth user gets a `profiles` row (from the `handle_new_user` trigger) with an `account_type` of `consumer` or `business`, set from sign-up metadata. A business account can't touch a roaster until it's in `roaster_members`, which only happens through Shopify:
 

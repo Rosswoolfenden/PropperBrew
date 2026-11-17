@@ -1147,3 +1147,50 @@ test.describe("roaster reviews", () => {
     await expect(page).toHaveURL("/sign-in");
   });
 });
+
+test.describe("following and notifications", () => {
+  const cleanUp = () => sql("delete from roaster_follows; delete from notifications;");
+  test.beforeEach(cleanUp);
+  test.afterAll(cleanUp);
+
+  test("follow a roaster from its screen; its new coffees show on Explore", async ({ page }) => {
+    await signIn(page);
+    await page.goto(`/roaster/${seed.secondRoaster.slug}`);
+    await page.getByRole("button", { name: `Follow ${seed.secondRoaster.name}` }).click();
+    await expect(page.getByRole("button", { name: "Following" })).toBeVisible();
+    await page.goto("/");
+    const section = page.getByRole("region", { name: "From roasters you follow" });
+    await expect(section.getByText(seed.kochere.name)).toBeVisible();
+    await expect(section.getByText(seed.cerrado.name)).toBeVisible();
+  });
+
+  test("the bell shows unread notifications; opening one goes where it's about", async ({ page }) => {
+    sql(`insert into notifications (user_id, kind, title, body, path, created_at) values
+           ('${seed.alice.id}', 'peak', 'Ready to brew', 'Cerrado Pulped Natural has rested.', '/journal', now() - interval '1 hour'),
+           ('${seed.alice.id}', 'new_coffee', 'New from Hackney Heights', 'Kochere Natural has just arrived.', '/bean/${seed.kochere.roasterSlug}/${seed.kochere.slug}', now())`);
+    await signIn(page);
+    await page.goto("/");
+    await page.getByRole("button", { name: "Notifications, 2 unread" }).click();
+    await expect(page).toHaveURL("/notifications");
+    const items = page.getByRole("link", { name: /^Unread: / });
+    await expect(items).toHaveCount(2);
+    await expect(items.first()).toHaveAccessibleName("Unread: New from Hackney Heights. Kochere Natural has just arrived.");
+    await items.first().click();
+    await expect(page).toHaveURL(`/bean/${seed.kochere.roasterSlug}/${seed.kochere.slug}`);
+    await expect.poll(() => sql(`select count(*) from notifications where user_id = '${seed.alice.id}' and read_at is null`)).toBe("1");
+
+    await page.goto("/notifications");
+    await page.getByRole("button", { name: "Mark all as read" }).click();
+    await expect(page.getByRole("link", { name: /^Unread: / })).toHaveCount(0);
+    await page.goto("/");
+    await expect(page.getByRole("button", { name: "Notifications", exact: true })).toBeVisible();
+  });
+
+  test("signed out, following and notifications ask you to sign in", async ({ page }) => {
+    await page.goto("/notifications");
+    await expect(page.getByRole("button", { name: "Sign in to see your notifications" })).toBeVisible();
+    await page.goto(`/roaster/${seed.secondRoaster.slug}`);
+    await page.getByRole("button", { name: `Follow ${seed.secondRoaster.name}` }).click();
+    await expect(page).toHaveURL("/sign-in");
+  });
+});

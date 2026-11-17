@@ -32,10 +32,27 @@ export default function AccountScreen() {
       <ChangePassword email={email} />
       <Section title="Sign out">
         <Body muted>Signed in as {email}.</Body>
-        <Button label="Sign out" variant="secondary" onPress={async () => (await signOut(), router.dismissTo("/"))} />
+        <SignOutButton />
       </Section>
       <DeleteAccount />
     </ScrollView>
+  );
+}
+
+/** Stop sending this account's notifications to this phone, then sign out. */
+function SignOutButton() {
+  const trpc = useTRPC();
+  const forget = useMutation(trpc.me.update.mutationOptions());
+  return (
+    <Button
+      label="Sign out"
+      variant="secondary"
+      onPress={async () => {
+        await forget.mutateAsync({ expoPushToken: null }).catch(() => undefined);
+        await signOut();
+        router.dismissTo("/");
+      }}
+    />
   );
 }
 

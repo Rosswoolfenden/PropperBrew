@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { TRPCClientError } from "@trpc/client";
 import { formatPriceFrom, humanize, notesSentence } from "@propperbrew/shared";
 import { Rating, Stars } from "@/components/rating";
+import { FollowButton } from "@/components/follow-button";
 import { ReportButton } from "@/components/report-button";
 import { RoasterReviewComposer } from "@/components/roaster-review-composer";
 import { api } from "@/lib/trpc";
@@ -52,6 +53,8 @@ export default async function RoasterPage({ params }: { params: Params }) {
           )}
         </div>
       </div>
+
+      <FollowButton roasterId={r.id} name={r.name} />
 
       {(r.tagline || r.bio) && (
         <section className="section-tight roaster-story" aria-labelledby="philosophy">
