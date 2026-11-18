@@ -40,6 +40,7 @@ export const webEnv = {
   NEXT_PUBLIC_API_URL: apiUrl,
   NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "e2e-anon-key",
+  NEXT_PUBLIC_SITE_URL: webUrl,
 };
 
 /** Seeded accounts that sign in with a password (db/seed.sql). */

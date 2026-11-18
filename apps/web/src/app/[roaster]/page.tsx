@@ -7,6 +7,8 @@ import { Rating, Stars } from "@/components/rating";
 import { FollowButton } from "@/components/follow-button";
 import { ReportButton } from "@/components/report-button";
 import { RoasterReviewComposer } from "@/components/roaster-review-composer";
+import { StructuredData } from "@/components/structured-data";
+import { siteUrl } from "@/lib/site";
 import { api } from "@/lib/trpc";
 
 export const revalidate = 300;
@@ -37,9 +39,26 @@ export default async function RoasterPage({ params }: { params: Params }) {
   const r = await loadRoaster(params);
   const roasterReviews = await api.roasterReviews.forRoaster.query({ slug: r.slug });
   const website = r.websiteUrl ? new URL(r.websiteUrl) : null;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: r.name,
+    url: `${siteUrl}/${r.slug}`,
+    description: r.tagline ?? r.bio ?? undefined,
+    logo: r.logoUrl ?? undefined,
+    image: r.heroImageUrl ?? undefined,
+    sameAs: website ? [website.toString()] : undefined,
+    foundingDate: r.establishedYear ? String(r.establishedYear) : undefined,
+    address: r.address ? { "@type": "PostalAddress", streetAddress: r.address, addressCountry: "GB" } : undefined,
+    aggregateRating:
+      roasterReviews.summary.count > 0 && roasterReviews.summary.rating !== null
+        ? { "@type": "AggregateRating", ratingValue: roasterReviews.summary.rating, reviewCount: roasterReviews.summary.count, bestRating: 5, worstRating: 1 }
+        : undefined,
+  };
 
   return (
     <article className="roaster-page">
+      <StructuredData data={jsonLd} />
       <div className="roaster-hero frame">
         {r.heroImageUrl && <img src={r.heroImageUrl} alt="" />}
         <div className="roaster-hero-text">

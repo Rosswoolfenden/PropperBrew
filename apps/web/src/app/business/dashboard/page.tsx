@@ -103,6 +103,21 @@ function RoasterPanel({ roaster: r, showName }: { roaster: Roaster; showName: bo
             of {r.coffees.length} {r.coffees.length === 1 ? "coffee" : "coffees"}
           </span>
         </div>
+        <div className="stat">
+          <span className="eyebrow">Followers</span>
+          <strong>{r.numbers.followers}</strong>
+          <span className="muted">hear about your new coffees</span>
+        </div>
+        {r.payouts.enabled && (
+          <div className="stat">
+            <span className="eyebrow">Last 30 days</span>
+            <strong>{formatGbp(r.numbers.payoutLast30DaysPence)}</strong>
+            <span className="muted">
+              from {r.numbers.ordersLast30Days} {r.numbers.ordersLast30Days === 1 ? "order" : "orders"}
+              {r.subscriptions.length > 0 ? ` · ${r.subscriptions.filter((x) => x.status === "active").length} subscribers` : ""}
+            </span>
+          </div>
+        )}
       </div>
 
       <h3 className="panel-subhead">Your coffees</h3>

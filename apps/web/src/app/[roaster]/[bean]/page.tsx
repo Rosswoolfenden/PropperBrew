@@ -5,20 +5,24 @@ import { TRPCClientError } from "@trpc/client";
 import {
   BREW_METHOD_LABELS,
   brewRatio,
+  deliveryNote,
   formatAltitude,
   formatPriceFrom,
   humanize,
+  notesSentence,
   SENSORY,
-  deliveryNote,
   SENSORY_DIMENSIONS,
   sensoryLevel,
 } from "@propperbrew/shared";
 import { AddToBasket } from "@/components/add-to-basket";
+import { AddRecipe } from "@/components/add-recipe";
 import { AddToShelf } from "@/components/add-to-shelf";
 import { OrderForm } from "@/components/order-form";
 import { Rating, Stars } from "@/components/rating";
 import { ReportButton } from "@/components/report-button";
 import { ReviewComposer } from "@/components/review-composer";
+import { StructuredData } from "@/components/structured-data";
+import { siteUrl } from "@/lib/site";
 import { api } from "@/lib/trpc";
 
 export const revalidate = 300;
@@ -65,19 +69,26 @@ export default async function BeanPage({ params }: { params: Params }) {
     "@context": "https://schema.org",
     "@type": "Product",
     name: bean.name,
+    url: `${siteUrl}/${bean.roaster.slug}/${bean.slug}`,
+    description: bean.tastingNotes.length > 0 ? `${bean.name} from ${bean.roaster.name}. ${notesSentence(bean.tastingNotes)}.` : `${bean.name} from ${bean.roaster.name}.`,
     brand: { "@type": "Brand", name: bean.roaster.name },
     image: bean.imageUrl ?? undefined,
     aggregateRating:
       bean.avgRating !== null && bean.reviewCount > 0
         ? { "@type": "AggregateRating", ratingValue: bean.avgRating, reviewCount: bean.reviewCount, bestRating: 5, worstRating: 1 }
         : undefined,
-    offers: bean.variants.map((v) => ({
-      "@type": "Offer",
-      name: v.title,
-      price: (v.pricePence / 100).toFixed(2),
-      priceCurrency: "GBP",
-      availability: "https://schema.org/InStock",
-    })),
+    // Only what can be bought now; a sold-out coffee has no offers to list.
+    offers:
+      bean.variants.length > 0
+        ? bean.variants.map((v) => ({
+            "@type": "Offer",
+            name: v.title,
+            price: (v.pricePence / 100).toFixed(2),
+            priceCurrency: "GBP",
+            availability: "https://schema.org/InStock",
+            url: `${siteUrl}/${bean.roaster.slug}/${bean.slug}`,
+          }))
+        : undefined,
   };
 
   const prices = bean.variants.map((v) => v.pricePence);
@@ -89,7 +100,7 @@ export default async function BeanPage({ params }: { params: Params }) {
 
   return (
     <article>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
+      <StructuredData data={jsonLd} />
       <div className="bean">
         <div className="frame">{bean.imageUrl && <img src={bean.imageUrl} alt={bean.name} />}</div>
         <div className="bean-info">
@@ -138,6 +149,7 @@ export default async function BeanPage({ params }: { params: Params }) {
       <section className="section">
         <h2>Brewing guide</h2>
         {recipes.length === 0 && <p className="muted">No recipes yet — be the first to share your dial-in.</p>}
+        <AddRecipe coffeeBeanId={bean.id} name={bean.name} roasterSlug={bean.roaster.slug} beanSlug={bean.slug} />
         {[
           { label: "From the roaster", items: recipes.filter((r) => r.author.type === "roaster") },
           { label: "From the community", items: recipes.filter((r) => r.author.type === "user") },

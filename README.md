@@ -90,7 +90,7 @@ Schema changes: edit `packages/db/src/schema.ts`, run `pnpm db:generate`, then `
 - *Connect your store* (website dashboard): `business.connectShopifyUrl` returns the install URL carrying a signed, 10-minute connect token (`apps/api/src/business/connect-token.ts`). After Shopify's approval, the OAuth callback links the store to that account, as owner if the roaster has none yet, otherwise as staff.
 - *Continue with Shopify* (website `/business`): an OAuth round trip with an online (per-user) token, so Shopify tells us which staff member approved it. If the store has the app installed and Shopify has verified their email, the API finds or creates their account through the auth admin API, adds them to the roaster, and sends them on with a one-time sign-in link.
 
-**Roaster tools.** In the business dashboard, a roaster's team can edit the roaster's public page: philosophy, story, city, year established, address, website, and a hero photo picked from their own coffee photos (the API refuses any other image). They can post recipes as their own recommendations ("Roaster's pick", shown first on that coffee's brewing guide) and remove them, and see recent reviews and community recipes on their coffees. Only members of a roaster can change it. The public page is `/<roaster>` on the website and the roaster screen in the app, following the Stitch Roaster Profile design. Discover links to it, and pages are rebuilt as soon as anything changes.
+**Roaster tools.** The business dashboard shows a roaster's followers and, once payouts are on, what it received from orders here in the last 30 days. In it, a roaster's team can edit the roaster's public page: philosophy, story, city, year established, address, website, and a hero photo picked from their own coffee photos (the API refuses any other image). They can post recipes as their own recommendations ("Roaster's pick", shown first on that coffee's brewing guide) and remove them, and see recent reviews and community recipes on their coffees. Only members of a roaster can change it. The public page is `/<roaster>` on the website and the roaster screen in the app, following the Stitch Roaster Profile design. Discover links to it, and pages are rebuilt as soon as anything changes.
 
 **In-app checkout (Option 2).** Roasters that have set up Stripe payouts sell through a PropperBrew basket, following the Stitch Cart, Checkout and Order Confirmation designs. Everyone else still gets "Order", which opens their own Shopify checkout.
 
@@ -138,6 +138,8 @@ from reports r join profiles p on p.id = r.reporter_id where r.status = 'open' o
 - *Managing them.* People pause (nothing is billed or sent), resume or cancel from "Your subscriptions" on the website and in the app. Stripe's `customer.subscription.*` events keep the status in step. Roasters see their subscribers in the dashboard.
 - *Deleting an account* cancels its subscriptions in Stripe first.
 - *Testing.* The fake Stripe bills the next period at `POST /__subscriptions/<id>/renew`.
+
+**Search engines.** The website serves `/sitemap.xml` (every live roaster and coffee page, from `beans.sitemap`) and `/robots.txt`, which keeps people's own pages (account, basket, journal, orders…) out. Coffee pages carry schema.org Product data (price and stock, rating) and roaster pages carry Organization data. Set `NEXT_PUBLIC_SITE_URL` to the site's public address so these links are absolute.
 
 **Security.** Shopify tokens are encrypted with AES-256-GCM. All data access goes through the API, which connects as `postgres`. RLS is enabled with no policies, so Supabase's auto-generated REST API exposes nothing. Clients authenticate with Supabase JWTs, which the API verifies via JWKS, or with the HS256 secret if one is set.
 
@@ -200,5 +202,4 @@ ANDROID_HOME=~/Library/Android/sdk pnpm test:android
 - **Sign in with Apple and Google.** This needs an Apple Developer account and a Google OAuth client. Apple requires Sign in with Apple in the iOS app if it offers Google.
 - **Checkout against real Stripe.** Every test runs against `e2e/fake-stripe.ts`. Before taking real money, run the flow once with Stripe test keys and the Stripe CLI (`stripe listen --forward-to localhost:4000/stripe/webhook`), and check the Connect settings (Express accounts, GB) in the Stripe dashboard.
 - Refunds. They're done in Stripe and Shopify by hand.
-- A community recipe form on the website (the app has one).
 - Recommendations: `pgvector` is enabled, but nothing uses embeddings yet.

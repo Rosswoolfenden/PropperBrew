@@ -559,3 +559,4 @@ button.button:disabled { opacity: 0.6; cursor: default; }
 .add-note input { flex: 1; min-width: 0; font: 1rem var(--font-body); background: var(--surface-container-highest); border: 0; border-radius: 6px; padding: 12px 14px; }
 .follow-button { width: auto; justify-self: start; margin-top: 8px; }
 .following { margin-bottom: 48px; }
+.add-recipe { width: auto; justify-self: start; margin-bottom: 24px; }

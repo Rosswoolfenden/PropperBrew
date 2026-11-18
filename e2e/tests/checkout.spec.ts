@@ -377,6 +377,8 @@ test.describe("roasters", () => {
     // £10 coffee + £4.50 delivery, less 12% of £10.
     await expect(order).toContainText("£14.50");
     await expect(order).toContainText("You receive £13.30");
+    // And in the panel's numbers.
+    await expect(panel.locator(".stat").filter({ hasText: "Last 30 days" })).toContainText("£13.30from 1 order");
   });
 
   test("only the owner can set up payouts", async ({ request }) => {

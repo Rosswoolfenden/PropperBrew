@@ -107,6 +107,22 @@ export const beansRouter = router({
     };
   }),
 
+  /** Every live roaster and coffee page, for the website's sitemap. */
+  sitemap: publicProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .select({ roaster: roasters.slug, roasterUpdatedAt: roasters.updatedAt, bean: coffeeBeans.slug, beanUpdatedAt: coffeeBeans.updatedAt })
+      .from(roasters)
+      .leftJoin(coffeeBeans, and(eq(coffeeBeans.roasterId, roasters.id), eq(coffeeBeans.isArchived, false)))
+      .where(eq(roasters.isActive, true))
+      .orderBy(roasters.slug, coffeeBeans.slug);
+    const pages = new Map<string, Date>();
+    for (const r of rows) {
+      pages.set(`/${r.roaster}`, r.roasterUpdatedAt);
+      if (r.bean) pages.set(`/${r.roaster}/${r.bean}`, r.beanUpdatedAt!);
+    }
+    return [...pages].map(([path, updatedAt]) => ({ path, updatedAt }));
+  }),
+
   /** Bean page: specs, roaster, buyable variants. Reviews/recipes load separately. */
   bySlug: publicProcedure
     .input(z.object({ roasterSlug: z.string(), beanSlug: z.string() }))

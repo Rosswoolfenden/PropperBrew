@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { z } from "zod";
-import { brewRecipes, checkouts, coffeeBeans, orderLines, orders, profiles, roasterMembers, roasterReviews, roasters, reviews, subscriptions, type Db } from "@propperbrew/db";
+import { brewRecipes, checkouts, coffeeBeans, orderLines, orders, profiles, roasterFollows, roasterMembers, roasterReviews, roasters, reviews, subscriptions, type Db } from "@propperbrew/db";
 import {
   CreateBrewRecipeInput,
   DeliveryInput,
@@ -93,6 +93,19 @@ export const businessRouter = router({
           .select({ orderId: orderLines.orderId, title: orderLines.title, quantity: orderLines.quantity })
           .from(orderLines)
           .where(inArray(orderLines.orderId, recentOrders.map((o) => o.order.id)))
+      : [];
+
+    // The last 30 days, and who's listening, for the dashboard's numbers.
+    const numbers = roasterIds.length
+      ? await ctx.db.execute<{ roaster_id: string; orders: number; payout: number; followers: number }>(sql`
+          select r.id as roaster_id,
+            (select count(*)::int from ${orders} o where o.roaster_id = r.id and o.created_at >= now() - interval '30 days'
+               and o.status in ('paid', 'pushed_to_shopify', 'fulfilled', 'partially_fulfilled')) as orders,
+            (select coalesce(sum(o.subtotal_pence + o.shipping_pence - o.platform_fee_pence), 0)::int from ${orders} o
+               where o.roaster_id = r.id and o.created_at >= now() - interval '30 days'
+               and o.status in ('paid', 'pushed_to_shopify', 'fulfilled', 'partially_fulfilled')) as payout,
+            (select count(*)::int from ${roasterFollows} f where f.roaster_id = r.id) as followers
+          from ${roasters} r where r.id in ${sql`(${sql.join(roasterIds.map((id) => sql`${id}`), sql`, `)})`}`)
       : [];
 
     const roasterSubscriptions = roasterIds.length
@@ -200,6 +213,10 @@ export const businessRouter = router({
           payouts: { available: checkoutEnabled, started: !!stripeAccountId, enabled: stripePayoutsEnabled },
           delivery: { shippingFlatPence, freeShippingThresholdPence },
           subscriptions: roasterSubscriptions.filter((r) => r.roasterId === roaster.id).map(({ roasterId: _r, ...r }) => r),
+          numbers: (() => {
+            const n = [...numbers].find((x) => x.roaster_id === roaster.id);
+            return { ordersLast30Days: n?.orders ?? 0, payoutLast30DaysPence: n?.payout ?? 0, followers: n?.followers ?? 0 };
+          })(),
           orders: recentOrders
             .filter(({ order }) => order.roasterId === roaster.id)
             .slice(0, ORDERS_LIMIT)
