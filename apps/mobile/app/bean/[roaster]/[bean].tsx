@@ -138,9 +138,20 @@ export default function BeanScreen() {
             <>
               <SizeOptions variants={b.variants} selectedId={variant.id} onSelect={setVariantId} />
               {checkout ? (
-                <Body italic muted style={{ fontSize: 15 }}>
-                  {b.inAppCheckout ? deliveryNote(b.roaster) : `You'll check out on ${possessive(b.roaster.name)} own shop.`}
-                </Body>
+                <>
+                  <Body italic muted style={{ fontSize: 15 }}>
+                    {b.inAppCheckout ? deliveryNote(b.roaster) : `You'll check out on ${possessive(b.roaster.name)} own shop.`}
+                  </Body>
+                  {b.inAppCheckout && (
+                    <Button
+                      label="Subscribe: every 2 or 4 weeks"
+                      icon="autorenew"
+                      variant="secondary"
+                      disabled={!ready}
+                      onPress={() => (session ? router.push({ pathname: "/subscribe", params: { roaster: b.roaster.slug, bean: b.slug } }) : router.push("/sign-in"))}
+                    />
+                  )}
+                </>
               ) : (
                 <Body italic muted style={styles.note}>
                   Ordering isn&apos;t available from this roaster yet.

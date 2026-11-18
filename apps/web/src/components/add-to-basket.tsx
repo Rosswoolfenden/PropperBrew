@@ -11,7 +11,7 @@ import type { RouterOutputs } from "@/lib/trpc";
 type Variant = RouterOutputs["beans"]["bySlug"]["variants"][number];
 
 /** Size + quantity into the PropperBrew basket, for roasters paid through us (see OrderForm for the rest). */
-export function AddToBasket({ variants, delivery }: { variants: readonly [Variant, ...Variant[]]; delivery: string }) {
+export function AddToBasket({ variants, delivery, subscribeHref }: { variants: readonly [Variant, ...Variant[]]; delivery: string; subscribeHref: string }) {
   const { session, ready } = useSession();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -77,6 +77,9 @@ export function AddToBasket({ variants, delivery }: { variants: readonly [Varian
         </p>
       )}
       <p className="muted order-note">{delivery}</p>
+      <Link href={subscribeHref} className="rule-link">
+        Or subscribe: a bag every 2 or 4 weeks
+      </Link>
     </div>
   );
 }

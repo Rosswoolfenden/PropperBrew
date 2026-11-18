@@ -24,6 +24,7 @@ import {
   REPORT_TARGETS,
   UPLOAD_KINDS,
   NOTIFICATION_KINDS,
+  SUBSCRIPTION_STATUSES,
   PROCESSES,
   ROAST_LEVELS,
   ROASTER_ROLES,
@@ -454,6 +455,41 @@ export const basketItems = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.shopifyVariantRowId] }), check("basket_quantity_range", sql`${t.quantity} between 1 and 20`)],
 );
 
+/**
+ * A coffee delivered every few weeks (Stripe Billing). Each paid invoice becomes a checkout with
+ * one order, fulfilled like any other (payout to the roaster, order in their Shopify).
+ */
+export const subscriptions = pgTable(
+  "subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Null once the person deletes their account (Stripe cancels it). */
+    userId: uuid("user_id").references(() => profiles.id, { onDelete: "set null" }),
+    roasterId: uuid("roaster_id")
+      .notNull()
+      .references(() => roasters.id),
+    shopifyVariantRowId: uuid("shopify_variant_row_id")
+      .notNull()
+      .references(() => shopifyVariants.id),
+    title: text("title").notNull(),
+    quantity: integer("quantity").notNull(),
+    intervalWeeks: smallint("interval_weeks").notNull(),
+    /** Price per delivery at sign-up (coffee and delivery), fixed for the life of the subscription. */
+    unitPricePence: integer("unit_price_pence").notNull(),
+    shippingPence: integer("shipping_pence").notNull(),
+    email: text("email").notNull(),
+    shippingAddress: jsonb("shipping_address").$type<ShippingAddress>().notNull(),
+    status: text("status", { enum: SUBSCRIPTION_STATUSES }).notNull().default("pending"),
+    stripeSessionId: text("stripe_session_id").unique(),
+    stripeSubscriptionId: text("stripe_subscription_id").unique(),
+    stripeCustomerId: text("stripe_customer_id"),
+    /** When the next delivery is paid for (Stripe's current period end). */
+    nextDeliveryAt: timestamp("next_delivery_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [index("subscriptions_user_idx").on(t.userId), index("subscriptions_roaster_idx").on(t.roasterId, t.status)],
+);
+
 /** One payment (a Stripe Checkout Session) covering an order per roaster. */
 export const checkouts = pgTable(
   "checkouts",
@@ -467,6 +503,9 @@ export const checkouts = pgTable(
     email: text("email").notNull(),
     shippingAddress: jsonb("shipping_address").$type<ShippingAddress>().notNull(),
     stripeSessionId: text("stripe_session_id").unique(),
+    /** A subscription delivery: the subscription, and the Stripe invoice that paid for it. */
+    subscriptionId: uuid("subscription_id").references(() => subscriptions.id, { onDelete: "set null" }),
+    stripeInvoiceId: text("stripe_invoice_id").unique(),
     stripePaymentIntentId: text("stripe_payment_intent_id"),
     /** The charge that paid for it: each roaster's transfer is made from it. */
     stripeChargeId: text("stripe_charge_id"),

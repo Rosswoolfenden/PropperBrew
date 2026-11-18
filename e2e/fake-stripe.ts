@@ -5,7 +5,8 @@
  * STRIPE_API_BASE.
  *
  * Card 4242 4242 4242 4242 pays; 4000 0000 0000 0002 is declined, as on real Stripe test mode.
- * GET /__state shows what was created, for tests to check.
+ * Subscription checkouts create a subscription and its first paid invoice; POST
+ * /__subscriptions/:id/renew bills the next period. GET /__state shows what was created.
  */
 import { createHmac, randomBytes } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
@@ -25,14 +26,48 @@ type Session = {
   success_url: string;
   cancel_url: string;
   url: string;
-  line_items: { name: string; description?: string; unit_amount: number; quantity: number }[];
+  line_items: { name: string; description?: string; unit_amount: number; quantity: number; interval_count?: number }[];
   transfer_group: string | null;
+  mode: "payment" | "subscription";
+  subscription: string | null;
+  customer: string | null;
+};
+type Subscription = {
+  id: string;
+  object: "subscription";
+  status: "active" | "canceled";
+  customer: string;
+  metadata: Record<string, string>;
+  pause_collection: { behavior: string } | null;
+  items: { object: "list"; data: { current_period_end: number }[] };
+  amount: number;
+  intervalWeeks: number;
 };
 
 const origin = `http://localhost:${ports.fakeStripe}`;
 const sessions = new Map<string, Session>();
 const paymentIntents = new Map<string, { id: string; object: "payment_intent"; latest_charge: string; amount: number }>();
 const transfers: Record<string, unknown>[] = [];
+const subscriptions = new Map<string, Subscription>();
+const invoices: Record<string, unknown>[] = [];
+const WEEK = 7 * 86_400;
+
+/** Bill one period of a subscription: a paid invoice, sent to the API like Stripe does. */
+async function billSubscription(sub: Subscription, reason: "subscription_create" | "subscription_cycle") {
+  const invoice = {
+    id: id("in"),
+    object: "invoice",
+    subscription: sub.id,
+    parent: { subscription_details: { subscription: sub.id } },
+    customer: sub.customer,
+    amount_paid: sub.amount,
+    charge: id("ch"),
+    billing_reason: reason,
+    status: "paid",
+  };
+  invoices.push(invoice);
+  await sendWebhook("invoice.paid", invoice);
+}
 const accounts = new Map<string, { id: string; object: "account"; email?: string; payouts_enabled: boolean; charges_enabled: boolean; capabilities: { transfers: string } }>();
 const idempotent = new Map<string, { status: number; body: unknown }>();
 /** Tests can hold webhooks back, to check the API copes when they're late. */
@@ -120,11 +155,22 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   if (path === "/health") return json(res, 200, { ok: true });
 
   if (path === "/__state") {
-    return json(res, 200, { sessions: [...sessions.values()], transfers, accounts: [...accounts.values()] });
+    return json(res, 200, { sessions: [...sessions.values()], transfers, accounts: [...accounts.values()], subscriptions: [...subscriptions.values()], invoices });
   }
   if (req.method === "POST" && path === "/__webhooks") {
     webhooksOn = (await readBody(req)) !== "off";
     return json(res, 200, { webhooksOn });
+  }
+  const renew = path.match(/^\/__subscriptions\/(sub_\w+)\/renew$/);
+  if (req.method === "POST" && renew) {
+    const sub = subscriptions.get(renew[1]!);
+    if (!sub) return json(res, 404, {});
+    // Nothing's billed while paused or after cancelling.
+    if (sub.status === "active" && !sub.pause_collection) {
+      sub.items.data[0]!.current_period_end += sub.intervalWeeks * WEEK;
+      await billSubscription(sub, "subscription_cycle");
+    }
+    return json(res, 200, sub);
   }
   const expire = path.match(/^\/__expire\/(cs_\w+)$/);
   if (req.method === "POST" && expire) {
@@ -149,10 +195,29 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     const card = (new URLSearchParams(await readBody(req)).get("card") ?? "").replace(/\s+/g, "");
     if (card === "4000000000000002") return payPage(res, s, "Your card was declined. Try a different card.");
     if (!/^\d{16}$/.test(card)) return payPage(res, s, "Your card number is incomplete.");
-    const pi = { id: id("pi"), object: "payment_intent" as const, latest_charge: id("ch"), amount: s.amount_total };
-    paymentIntents.set(pi.id, pi);
-    Object.assign(s, { status: "complete", payment_status: "paid", payment_intent: pi.id });
-    await sendWebhook("checkout.session.completed", s);
+    if (s.mode === "subscription") {
+      const intervalWeeks = s.line_items[0]?.interval_count ?? 4;
+      const sub: Subscription = {
+        id: id("sub"),
+        object: "subscription",
+        status: "active",
+        customer: id("cus"),
+        metadata: s.metadata,
+        pause_collection: null,
+        items: { object: "list", data: [{ current_period_end: Math.floor(Date.now() / 1000) + intervalWeeks * WEEK }] },
+        amount: s.amount_total,
+        intervalWeeks,
+      };
+      subscriptions.set(sub.id, sub);
+      Object.assign(s, { status: "complete", payment_status: "paid", subscription: sub.id, customer: sub.customer });
+      await sendWebhook("checkout.session.completed", s);
+      await billSubscription(sub, "subscription_create");
+    } else {
+      const pi = { id: id("pi"), object: "payment_intent" as const, latest_charge: id("ch"), amount: s.amount_total };
+      paymentIntents.set(pi.id, pi);
+      Object.assign(s, { status: "complete", payment_status: "paid", payment_intent: pi.id });
+      await sendWebhook("checkout.session.completed", s);
+    }
     res.writeHead(303, { location: s.success_url });
     return res.end();
   }
@@ -198,6 +263,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       description: l.price_data.product_data.description as string | undefined,
       unit_amount: Number(l.price_data.unit_amount),
       quantity: Number(l.quantity),
+      interval_count: l.price_data.recurring ? Number(l.price_data.recurring.interval_count) : undefined,
     }));
     const sessionId = id("cs_test");
     const session: Session = {
@@ -216,6 +282,9 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       url: `${origin}/pay/${sessionId}`,
       line_items: lineItems,
       transfer_group: body.payment_intent_data?.transfer_group ?? null,
+      mode: body.mode === "subscription" ? "subscription" : "payment",
+      subscription: null,
+      customer: null,
     };
     sessions.set(sessionId, session);
     return reply(200, session);
@@ -229,6 +298,22 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   if (req.method === "GET" && intent) {
     const pi = paymentIntents.get(intent[1]!);
     return pi ? reply(200, pi) : reply(404, { error: { type: "invalid_request_error", message: "No such payment_intent" } });
+  }
+  const subPath = path.match(/^\/v1\/subscriptions\/(sub_\w+)$/);
+  if (subPath) {
+    const sub = subscriptions.get(subPath[1]!);
+    if (!sub) return reply(404, { error: { type: "invalid_request_error", message: "No such subscription" } });
+    if (req.method === "GET") return reply(200, sub);
+    if (req.method === "DELETE") {
+      sub.status = "canceled";
+      await sendWebhook("customer.subscription.deleted", sub);
+      return reply(200, sub);
+    }
+    if (req.method === "POST") {
+      if ("pause_collection" in body) sub.pause_collection = body.pause_collection ? { behavior: body.pause_collection.behavior } : null;
+      await sendWebhook("customer.subscription.updated", sub);
+      return reply(200, sub);
+    }
   }
   if (req.method === "POST" && path === "/v1/transfers") {
     const transfer = { id: id("tr"), object: "transfer", amount: Number(body.amount), currency: body.currency, destination: body.destination, transfer_group: body.transfer_group, source_transaction: body.source_transaction ?? null, metadata: body.metadata ?? {} };

@@ -1,9 +1,10 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
-import { brewRecipes, profiles, recipeVotes, reviews, roasterMembers, roasters, uploads } from "@propperbrew/db";
+import { brewRecipes, profiles, recipeVotes, reviews, roasterMembers, roasters, subscriptions, uploads } from "@propperbrew/db";
 import { DELETE_ACCOUNT_PHRASE, UserProfileInput } from "@propperbrew/shared";
 import { deleteAuthUser } from "../../lib/auth-admin";
+import { requireStripe } from "../../payments/stripe";
 import { assertOwnUpload } from "../../uploads/own";
 import { keyOf, removeObject } from "../../uploads/store";
 import { limitedProcedure, protectedProcedure, router } from "../init";
@@ -26,7 +27,8 @@ export const meRouter = router({
     }),
 
   /**
-   * Delete the account and what's theirs: profile, photos, reviews, recipes, votes, shelf and basket.
+   * Delete the account and what's theirs: profile, photos, reviews, recipes, votes, shelf and basket,
+   * and cancel their subscriptions.
    * Orders stay (unlinked) for the roasters' records. Ratings and vote counts they contributed to
    * are updated. A roaster's only owner has to hand it over first.
    */
@@ -62,6 +64,16 @@ export const meRouter = router({
           // Their own recipes go with them; only other people's need recounting.
           .where(and(eq(recipeVotes.userId, userId), sql`${brewRecipes.userId} is distinct from ${userId}`)),
       ]);
+
+      // Stop their subscriptions first, so nobody's charged for an account that's gone.
+      const live = await ctx.db
+        .select({ id: subscriptions.id, stripeSubscriptionId: subscriptions.stripeSubscriptionId })
+        .from(subscriptions)
+        .where(and(eq(subscriptions.userId, userId), inArray(subscriptions.status, ["active", "paused"])));
+      for (const sub of live) {
+        if (sub.stripeSubscriptionId) await requireStripe().subscriptions.cancel(sub.stripeSubscriptionId);
+        await ctx.db.update(subscriptions).set({ status: "cancelled", nextDeliveryAt: null }).where(eq(subscriptions.id, sub.id));
+      }
 
       const photos = await ctx.db.select({ url: uploads.url }).from(uploads).where(eq(uploads.userId, userId));
       await deleteAuthUser(userId);

@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { z } from "zod";
-import { brewRecipes, checkouts, coffeeBeans, orderLines, orders, profiles, roasterMembers, roasterReviews, roasters, reviews, type Db } from "@propperbrew/db";
+import { brewRecipes, checkouts, coffeeBeans, orderLines, orders, profiles, roasterMembers, roasterReviews, roasters, reviews, subscriptions, type Db } from "@propperbrew/db";
 import {
   CreateBrewRecipeInput,
   DeliveryInput,
@@ -95,6 +95,23 @@ export const businessRouter = router({
           .where(inArray(orderLines.orderId, recentOrders.map((o) => o.order.id)))
       : [];
 
+    const roasterSubscriptions = roasterIds.length
+      ? await ctx.db
+          .select({
+            id: subscriptions.id,
+            roasterId: subscriptions.roasterId,
+            title: subscriptions.title,
+            quantity: subscriptions.quantity,
+            intervalWeeks: subscriptions.intervalWeeks,
+            status: subscriptions.status,
+            customer: sql<string>`${subscriptions.shippingAddress}->>'name'`,
+            nextDeliveryAt: subscriptions.nextDeliveryAt,
+          })
+          .from(subscriptions)
+          .where(and(inArray(subscriptions.roasterId, roasterIds), inArray(subscriptions.status, ["active", "paused"])))
+          .orderBy(desc(subscriptions.createdAt))
+      : [];
+
     const recentRoasterReviews = roasterIds.length
       ? await ctx.db
           .select({
@@ -182,6 +199,7 @@ export const businessRouter = router({
           liveCount: coffees.filter((c) => c.status === "in_stock").length,
           payouts: { available: checkoutEnabled, started: !!stripeAccountId, enabled: stripePayoutsEnabled },
           delivery: { shippingFlatPence, freeShippingThresholdPence },
+          subscriptions: roasterSubscriptions.filter((r) => r.roasterId === roaster.id).map(({ roasterId: _r, ...r }) => r),
           orders: recentOrders
             .filter(({ order }) => order.roasterId === roaster.id)
             .slice(0, ORDERS_LIMIT)

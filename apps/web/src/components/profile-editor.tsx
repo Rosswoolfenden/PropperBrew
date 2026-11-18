@@ -46,6 +46,9 @@ export function ProfileEditor({ username }: { username: string }) {
         <Link href="/orders" className="button button-secondary button-sm">
           Your orders
         </Link>
+        <Link href="/subscriptions" className="button button-secondary button-sm">
+          Your subscriptions
+        </Link>
         <Link href="/account" className="button button-secondary button-sm">
           Account settings
         </Link>

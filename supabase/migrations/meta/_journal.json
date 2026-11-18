@@ -99,6 +99,13 @@
       "when": 1794942870834,
       "tag": "20261117191430_follows_and_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794946077761,
+      "tag": "20261117200757_subscriptions",
+      "breakpoints": true
     }
   ]
 }

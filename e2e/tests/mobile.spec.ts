@@ -1194,3 +1194,37 @@ test.describe("following and notifications", () => {
     await expect(page).toHaveURL("/sign-in");
   });
 });
+
+test.describe("subscriptions", () => {
+  const cleanUp = () => sql("delete from checkouts where subscription_id is not null; delete from subscriptions;");
+  test.beforeEach(cleanUp);
+  test.afterAll(cleanUp);
+
+  test("subscribe from a coffee, pay on Stripe's page, then pause it", async ({ page }) => {
+    await signIn(page);
+    await page.goto(`/bean/${seed.kochere.roasterSlug}/${seed.kochere.slug}`);
+    await page.getByRole("button", { name: "Subscribe: every 2 or 4 weeks" }).click();
+    await expect(page).toHaveURL(/\/subscribe\?/);
+    await page.getByRole("button", { name: "Every 4 weeks", exact: true }).click();
+    const summary = page.getByRole("region", { name: "Your subscription" });
+    await expect(summary).toContainText("Every 4 weeks · £17.95");
+    await page.getByLabel("Full name").fill("Alice Smith");
+    await page.getByLabel("Street address").fill("1 Mare Street");
+    await page.getByLabel("Town or city").fill("London");
+    await page.getByLabel("Postcode").fill("e8 1aa");
+
+    const [stripe] = await Promise.all([page.waitForEvent("popup"), summary.getByRole("button", { name: "Subscribe · £17.95" }).click()]);
+    await expect(stripe).toHaveURL(new RegExp(`^http://localhost:${ports.fakeStripe}/pay/`));
+    await stripe.getByRole("button", { name: "Pay £17.95" }).click();
+    await expect(stripe.getByRole("heading", { name: "Payment received" })).toBeVisible();
+    await stripe.close();
+
+    await expect(page).toHaveURL("/subscriptions");
+    const card = page.getByRole("region", { name: "Kochere Natural · 250g / Wholebean" });
+    await expect(card).toContainText("Active");
+    await expect(card).toContainText("every 4 weeks · £17.95 each time");
+    await card.getByRole("button", { name: "Pause" }).click();
+    await expect(card).toContainText("Paused: nothing is sent or charged until you resume.");
+    expect(sql("select status from subscriptions")).toBe("paused");
+  });
+});

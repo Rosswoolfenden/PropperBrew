@@ -309,6 +309,17 @@ const cases: [name: string, run: (d: Device) => Promise<void>][] = [
     },
   ],
   [
+    "subscriptions: subscribing signed out asks you to sign in; the screen offers sign in",
+    async (d) => {
+      await d.launch(`/bean/${seed.kochere.roasterSlug}/${seed.kochere.slug}`);
+      await d.scrollTo("Subscribe: every 2 or 4 weeks", aboveOrderBar);
+      await d.tap("Subscribe: every 2 or 4 weeks");
+      await d.expect(["The Ritual Awaits"]);
+      await d.launch("/subscriptions");
+      await d.expect(["Sign in to see your subscriptions"]);
+    },
+  ],
+  [
     "scan screen opens",
     async (d) => {
       await d.launch("/scan");

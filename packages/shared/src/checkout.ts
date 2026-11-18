@@ -81,3 +81,22 @@ export function deliveryNote(r: { name: string; shippingFlatPence: number | null
   if (flat === 0 || free === 0) return `Free delivery from ${r.name}.`;
   return `Delivery from ${r.name}: ${formatGbp(flat)}${free !== null ? `, free on orders of ${formatGbp(free)} or more` : ""}.`;
 }
+
+/** How often a subscription delivers, in weeks. */
+export const SUBSCRIPTION_INTERVALS = [2, 4] as const;
+export type SubscriptionInterval = (typeof SUBSCRIPTION_INTERVALS)[number];
+export const SUBSCRIPTION_STATUSES = ["pending", "active", "paused", "cancelled"] as const;
+export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
+
+export const StartSubscriptionInput = z.object({
+  /** shopify_variants.id */
+  variantId: z.uuid(),
+  quantity: z.number().int().min(1).max(MAX_ORDER_QUANTITY),
+  intervalWeeks: z.union([z.literal(2), z.literal(4)]),
+  address: ShippingAddress,
+  client: z.enum(["web", "app"]).default("web"),
+});
+export type StartSubscriptionInput = z.input<typeof StartSubscriptionInput>;
+
+/** "Every 2 weeks". */
+export const intervalLabel = (weeks: number) => `Every ${weeks} weeks`;

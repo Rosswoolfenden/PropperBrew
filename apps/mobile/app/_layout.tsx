@@ -49,6 +49,8 @@ export default function RootLayout() {
         <Stack.Screen name="orders" options={{ title: "Your orders" }} />
         <Stack.Screen name="account" options={{ title: "Account" }} />
         <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
+        <Stack.Screen name="subscribe" options={{ title: "Subscribe" }} />
+        <Stack.Screen name="subscriptions" options={{ title: "Subscriptions" }} />
         <Stack.Screen
           name="brew/new"
           options={{ title: "Journal", presentation: "modal", headerLeft: () => <HeaderIcon icon="close" label="Close" onPress={() => router.back()} /> }}

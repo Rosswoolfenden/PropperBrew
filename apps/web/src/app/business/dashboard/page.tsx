@@ -7,7 +7,7 @@ import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { formatGbp } from "@propperbrew/shared";
 import { useSession, useTRPC } from "@/app/providers";
 import { Feedback } from "@/components/business/feedback";
-import { RoasterOrders } from "@/components/business/orders";
+import { RoasterOrders, RoasterSubscribers } from "@/components/business/orders";
 import { Payouts } from "@/components/business/payouts";
 import { ProfileForm } from "@/components/business/profile-form";
 import { Recommendations } from "@/components/business/recommendations";
@@ -126,6 +126,7 @@ function RoasterPanel({ roaster: r, showName }: { roaster: Roaster; showName: bo
 
       <div className="tools">
         <RoasterOrders roaster={r} />
+        <RoasterSubscribers roaster={r} />
         <Payouts roaster={r} />
         <ProfileForm roaster={r} />
         <Recommendations roaster={r} />

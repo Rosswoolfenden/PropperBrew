@@ -123,7 +123,7 @@ export default async function BeanPage({ params }: { params: Params }) {
             <h2>Order</h2>
             {orderable ? (
               bean.inAppCheckout ? (
-                <AddToBasket variants={orderable.variants} delivery={deliveryNote(bean.roaster)} />
+                <AddToBasket variants={orderable.variants} delivery={deliveryNote(bean.roaster)} subscribeHref={`/${bean.roaster.slug}/${bean.slug}/subscribe`} />
               ) : (
                 <OrderForm variants={orderable.variants} checkoutDomain={orderable.domain} roasterName={bean.roaster.name} />
               )

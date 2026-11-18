@@ -131,6 +131,14 @@ select r.created_at, r.target_type, r.target_id, r.reason, r.note, p.username as
 from reports r join profiles p on p.id = r.reporter_id where r.status = 'open' order by r.created_at;
 ```
 
+**Subscriptions.** For roasters that take payment here, a coffee can be delivered every 2 or 4 weeks. "Or subscribe" is on the website's coffee page (`/<roaster>/<coffee>/subscribe`), and "Subscribe" is on the app's coffee screen.
+
+- *Starting one.* `subscriptions.start` opens a Stripe Checkout Session in subscription mode. The price is the coffee and the roaster's delivery charge at sign-up, fixed for the life of the subscription.
+- *Each delivery.* Each paid invoice (`invoice.paid`) becomes a paid checkout with one order, fulfilled like any other: the roaster's payout, then the order in their Shopify. Each invoice is used once.
+- *Managing them.* People pause (nothing is billed or sent), resume or cancel from "Your subscriptions" on the website and in the app. Stripe's `customer.subscription.*` events keep the status in step. Roasters see their subscribers in the dashboard.
+- *Deleting an account* cancels its subscriptions in Stripe first.
+- *Testing.* The fake Stripe bills the next period at `POST /__subscriptions/<id>/renew`.
+
 **Security.** Shopify tokens are encrypted with AES-256-GCM. All data access goes through the API, which connects as `postgres`. RLS is enabled with no policies, so Supabase's auto-generated REST API exposes nothing. Clients authenticate with Supabase JWTs, which the API verifies via JWKS, or with the HS256 secret if one is set.
 
 ## Design

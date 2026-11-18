@@ -14,6 +14,34 @@ const STATUS = {
   refunded: { label: "Refunded", className: "status-archived" },
 } as Record<string, { label: string; className: string }>;
 
+const nextDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
+
+/** People with a subscription to one of the roaster's coffees. */
+export function RoasterSubscribers({ roaster: r }: { roaster: Roaster }) {
+  if (!r.payouts.available || r.subscriptions.length === 0) return null;
+  return (
+    <section className="card business-form" aria-label="Subscribers">
+      <div className="card-head">
+        <h3>Subscribers</h3>
+        <span className="muted">{r.subscriptions.filter((s) => s.status === "active").length} active</span>
+      </div>
+      <ul className="feedback-list">
+        {r.subscriptions.map((s) => (
+          <li key={s.id} className="feedback-item order-line">
+            <div>
+              <strong>{s.customer}</strong>
+              <div className="muted">
+                {s.quantity} × {s.title} · every {s.intervalWeeks} weeks
+              </div>
+            </div>
+            <span className="muted">{s.status === "paused" ? "Paused" : s.nextDeliveryAt ? `Next ${nextDate.format(s.nextDeliveryAt)}` : "Active"}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /** Orders placed on PropperBrew for this roaster. */
 export function RoasterOrders({ roaster: r }: { roaster: Roaster }) {
   if (!r.payouts.available || (!r.payouts.enabled && r.orders.length === 0)) return null;

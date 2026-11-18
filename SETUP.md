@@ -17,6 +17,7 @@ README, "Local preview"). Tick items off as they're done; when one is, send over
   - Install the Stripe CLI, then run `stripe listen --forward-to localhost:4000/stripe/webhook`. It prints the webhook secret to use locally.
   - Put the test keys in `.env`: `STRIPE_SECRET_KEY=sk_test_…`, `STRIPE_WEBHOOK_SECRET=whsec_…`.
   - **Send:** a message once that's done, and I'll run the whole checkout against real Stripe test mode.
+  - For subscriptions, the webhook (and `stripe listen`) also needs `invoice.paid`, `customer.subscription.updated` and `customer.subscription.deleted`.
 
 - [ ] **Anthropic API key** for product enrichment and the bag scanner. Put `ANTHROPIC_API_KEY` in `.env`.
 

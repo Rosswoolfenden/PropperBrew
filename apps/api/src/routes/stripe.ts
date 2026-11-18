@@ -7,6 +7,7 @@ import { env } from "../env";
 import { db } from "../lib/db";
 import { markCheckoutExpired, markCheckoutPaid } from "../payments/fulfil";
 import { payoutsReady, stripe } from "../payments/stripe";
+import { activateSubscription, deliverInvoice, syncSubscription } from "../payments/subscriptions";
 
 export const stripeRoutes = new Hono();
 
@@ -29,6 +30,12 @@ stripeRoutes.post("/stripe/webhook", async (c) => {
     case "checkout.session.completed":
     case "checkout.session.async_payment_succeeded": {
       const session = event.data.object;
+      // A subscription's first payment arrives as invoice.paid; this only links it up.
+      if (session.mode === "subscription") {
+        const subscriptionId = session.client_reference_id ?? session.metadata?.subscriptionId;
+        if (subscriptionId) await activateSubscription(db, subscriptionId, session);
+        break;
+      }
       const checkoutId = checkoutIdOf(session);
       // Bank debits complete later (async_payment_succeeded); cards are paid already.
       if (checkoutId && session.payment_status !== "unpaid") await markCheckoutPaid(db, checkoutId, { paymentIntentId: paymentIntentOf(session) });
@@ -40,7 +47,14 @@ stripeRoutes.post("/stripe/webhook", async (c) => {
       if (checkoutId) await markCheckoutExpired(db, checkoutId);
       break;
     }
-    case "account.updated": {
+    case "invoice.paid":
+      await deliverInvoice(db, event.data.object);
+      break;
+    case "customer.subscription.updated":
+    case "customer.subscription.deleted":
+      await syncSubscription(db, event.data.object);
+      break;
+        case "account.updated": {
       const account = event.data.object;
       await db.update(roasters).set({ stripePayoutsEnabled: payoutsReady(account) }).where(eq(roasters.stripeAccountId, account.id));
       break;
