@@ -190,6 +190,18 @@ ANDROID_HOME=~/Library/Android/sdk pnpm test:android
 
 `e2e/native/android.ts` seeds the same database, starts the API and a fresh Metro (`--clear`, so the device never runs a stale bundle), then cold-starts the app in Expo Go for each case through deep links. Through adb and uiautomator it reads the screen, scrolls, types and taps through discovery, search, ordering, the brewing guide, the recipe timer, the signed-out prompts and error states. A case fails if React Native shows its red error screen or logs a JavaScript error. Don't touch the emulator while it runs. `ONLY=search pnpm test:android` runs just the cases whose name contains "search", and a failing case saves a screenshot to `e2e/test-results/android-<n>.png`.
 
+## CI and staging
+
+GitHub Actions (`.github/workflows/ci.yml`) typechecks every package and runs the browser end-to-end suite on each push to `main`, `feature/**` and `chore/**`, and on pull requests. Traces of failed tests are kept as a downloadable artifact for a week. The native Android run needs an emulator, so it stays local.
+
+Staging runs on Fly with Fly's own addresses, so it needs no domain:
+
+- API: `apps/api/fly.staging.toml`, at https://propperbrew-api-staging.fly.dev
+- Website: `apps/web/fly.staging.toml` and `apps/web/Dockerfile.fly` (Next's standalone server), at https://propperbrew-web-staging.fly.dev
+- Database and sign-in: a separate Supabase project
+
+To deploy, run **Actions → Deploy staging** (`.github/workflows/deploy-staging.yml`). It applies new migrations with `supabase db push`, deploys the API, waits for `/health`, then deploys the website. The website goes last because its home, roaster and coffee pages are prerendered from the API at build time. The one-off setup (apps, secrets, Supabase settings) is in [SETUP.md](SETUP.md), "Staging". Staging starts with an empty catalogue: connect the Shopify development store from the website's business sign-in to fill it.
+
 ## Changes from the original configs
 
 - `shopify.app.toml`: `embedded = false` and `application_url` set to `/shopify/app` on the API. For the MVP, roasters only see a "connected" status page, so App Bridge and session tokens aren't needed and the plain OAuth code grant is enough. Removed the duplicate redirect URL.

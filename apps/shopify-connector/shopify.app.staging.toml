@@ -1,0 +1,44 @@
+# The staging app, pointing at the staging API on Fly (see SETUP.md, "Staging").
+# Link it once with `shopify app config link --config staging` (fills in client_id), then push
+# changes with `shopify app deploy --config staging`.
+
+name = "PropperBrew (Staging)"
+client_id = "YOUR_STAGING_SHOPIFY_CLIENT_ID"
+application_url = "https://propperbrew-api-staging.fly.dev/shopify/app"
+embedded = false
+
+[build]
+include_config_on_deploy = true
+
+[access_scopes]
+scopes = "read_products,read_inventory,read_locations,write_orders,read_orders,read_fulfillments,read_shipping"
+
+[auth]
+redirect_urls = [ "https://propperbrew-api-staging.fly.dev/api/shopify/auth/callback" ]
+
+[webhooks]
+api_version = "2026-04"
+
+  [[webhooks.subscriptions]]
+  topics = [ "products/create", "products/update" ]
+  uri = "https://propperbrew-api-staging.fly.dev/webhooks/shopify/products-sync"
+
+  [[webhooks.subscriptions]]
+  topics = [ "products/delete" ]
+  uri = "https://propperbrew-api-staging.fly.dev/webhooks/shopify/products-archive"
+
+  [[webhooks.subscriptions]]
+  topics = [ "inventory_levels/update" ]
+  uri = "https://propperbrew-api-staging.fly.dev/webhooks/shopify/inventory-sync"
+
+  [[webhooks.subscriptions]]
+  topics = [ "orders/fulfilled", "orders/partially_fulfilled", "fulfillments/create" ]
+  uri = "https://propperbrew-api-staging.fly.dev/webhooks/shopify/order-fulfillment"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "https://propperbrew-api-staging.fly.dev/webhooks/shopify/app-uninstalled"
+
+  [[webhooks.subscriptions]]
+  compliance_topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
+  uri = "https://propperbrew-api-staging.fly.dev/webhooks/shopify/gdpr"

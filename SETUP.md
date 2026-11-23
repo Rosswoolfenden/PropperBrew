@@ -21,6 +21,45 @@ README, "Local preview"). Tick items off as they're done; when one is, send over
 
 - [ ] **Anthropic API key** for product enrichment and the bag scanner. Put `ANTHROPIC_API_KEY` in `.env`.
 
+## Staging
+
+Everything is ready in the repo: `apps/api/fly.staging.toml`, `apps/web/fly.staging.toml`, `apps/shopify-connector/shopify.app.staging.toml`, and a manual GitHub Action (README, "CI and staging"). It uses Fly's own addresses, so it needs **no domain**. Steps, in order:
+
+- [ ] **Fly.io account.** Install `flyctl` and run `fly auth login`. Then create both apps (no deploy yet):
+  - `fly apps create propperbrew-api-staging`
+  - `fly apps create propperbrew-web-staging`
+  - If either name is taken, pick another and tell me; the name appears in the configs and the workflow.
+
+- [ ] **A separate Supabase project for staging** (London region).
+  - Authentication settings:
+    - Site URL `https://propperbrew-web-staging.fly.dev`
+    - add `/welcome`, `/reset-password` and `/account` on that address to the redirect URLs
+    - minimum password length 8
+    - email confirmation on
+  - Storage: create a **public** bucket called `uploads`.
+  - Supabase's built-in email sender is fine for staging (a few emails an hour).
+  - Put the project URL and anon key (Project settings → API) into `apps/web/fly.staging.toml` under `[build.args]`. Both are public values, so committing them is fine. Or **send** them and I'll do it.
+
+- [ ] **Shopify staging app.** In the Partner dashboard, create an app "PropperBrew (Staging)".
+  - In `apps/shopify-connector`, run `corepack pnpm exec shopify app config link --config staging`, then `shopify app deploy --config staging`.
+  - Install it on your development store from the website's business sign-in once staging is up.
+
+- [ ] **API secrets.** Run from anywhere with `fly secrets set --app propperbrew-api-staging NAME=value …`:
+  - `DATABASE_URL`: Supabase → Connect → **Session pooler** string (the direct one is IPv6-only)
+  - `TOKEN_ENCRYPTION_KEY`: `openssl rand -base64 32`, a different one from production
+  - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+  - `SHOPIFY_API_KEY`, `SHOPIFY_API_SECRET`: from the staging app
+  - Optional: `ANTHROPIC_API_KEY`
+  - Optional, for in-app checkout: `STRIPE_SECRET_KEY` (test, `sk_test_…`) and `STRIPE_WEBHOOK_SECRET`. The secret comes from a Stripe test-mode webhook endpoint at `https://propperbrew-api-staging.fly.dev/stripe/webhook` with:
+    - `checkout.session.completed`, `invoice.paid`, `customer.subscription.updated`, `customer.subscription.deleted`
+    - `account.updated` from connected accounts
+
+- [ ] **GitHub secrets** (repo → Settings → Secrets and variables → Actions):
+  - `FLY_API_TOKEN`: from `fly tokens create deploy --org personal`
+  - `STAGING_DATABASE_URL`: the same session pooler string
+
+- [ ] **Deploy:** Actions → **Deploy staging** → Run workflow. **Send** a message once it's green, and I'll go through the site and app against it.
+
 ## Before launch
 
 - [ ] **Domain name**

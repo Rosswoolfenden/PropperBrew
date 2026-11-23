@@ -1,0 +1,41 @@
+# Staging website. Deploy from the repo root, after the API:
+#   fly deploy --config apps/web/fly.staging.toml .
+# Uses Fly's own address, so staging needs no domain. See SETUP.md, "Staging".
+app = "propperbrew-web-staging"
+primary_region = "lhr" # London, UK
+
+[build]
+  dockerfile = "Dockerfile.fly"
+
+  # Public values, compiled into the browser code. Replace the two Supabase ones with your staging
+  # project's (Project settings → API).
+  [build.args]
+    NEXT_PUBLIC_API_URL = "https://propperbrew-api-staging.fly.dev"
+    NEXT_PUBLIC_SITE_URL = "https://propperbrew-web-staging.fly.dev"
+    NEXT_PUBLIC_SUPABASE_URL = "https://YOUR-STAGING-PROJECT.supabase.co"
+    NEXT_PUBLIC_SUPABASE_ANON_KEY = "YOUR-STAGING-ANON-KEY"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8080"
+  API_URL = "https://propperbrew-api-staging.fly.dev"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop" # staging: sleep when idle
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.checks]]
+    grace_period = "15s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/robots.txt"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512

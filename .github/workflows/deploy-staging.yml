@@ -1,0 +1,47 @@
+# Deploys staging by hand (Actions → Deploy staging → Run workflow): applies new database migrations,
+# then the API, then the website (whose pages are prerendered from the API). See SETUP.md, "Staging".
+#
+# Repository secrets (Settings → Secrets and variables → Actions):
+#   FLY_API_TOKEN             fly tokens create deploy --org personal
+#   STAGING_DATABASE_URL      the staging Supabase project's session pooler connection string
+name: Deploy staging
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Apply database migrations
+        run: supabase db push --db-url "$DATABASE_URL"
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+
+      - uses: superfly/flyctl-actions/setup-flyctl@1.5
+      - name: Deploy the API
+        run: flyctl deploy --config apps/api/fly.staging.toml --remote-only --wait-timeout 300 .
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      - name: Wait for the API
+        run: |
+          for i in $(seq 1 30); do
+            curl -fsS https://propperbrew-api-staging.fly.dev/health && exit 0
+            sleep 5
+          done
+          echo "The API didn't come up" && exit 1
+      - name: Deploy the website
+        run: flyctl deploy --config apps/web/fly.staging.toml --remote-only --wait-timeout 300 .
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
