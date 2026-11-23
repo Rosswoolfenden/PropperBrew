@@ -44,9 +44,7 @@ export default defineConfig({
       cwd: "../apps/web",
       // A production build: closer to what ships, and it doesn't clash with a local `next dev`.
       // Servers start in order, so the API is up for the build's prerender.
-      // Next.js sometimes stops a build once to show an upgrade notice, then builds when run again;
-      // a real build error fails both times.
-      command: `(corepack pnpm exec next build || corepack pnpm exec next build) && corepack pnpm exec next start --port ${ports.web}`,
+      command: `corepack pnpm exec next build && corepack pnpm exec next start --port ${ports.web}`,
       url: `http://localhost:${ports.web}`,
       env: webEnv,
       timeout: 240_000,

@@ -358,7 +358,17 @@ async function main() {
   const device = new Device(metroUrl);
   console.info("Loading the app (first bundle can take a minute)…");
   await device.launch("/");
-  await device.expect(["Roaster spotlight"], 180_000);
+  try {
+    await device.expect(["Roaster spotlight"], 180_000);
+  } catch (err) {
+    // Expo Go now and then stalls on its loading screen while fetching the first bundle; opening
+    // the app again resumes it. A second stall is a real failure.
+    const shot = join(repo, "e2e/test-results", "android-startup.png");
+    device.screenshot(shot);
+    console.info(`The app didn't load (screenshot: ${shot}); opening it again…\n  ${String(err instanceof Error ? err.message : err).replace(/\n/g, "\n  ")}`);
+    await device.launch("/");
+    await device.expect(["Roaster spotlight"], 180_000);
+  }
   console.info("Running (please don't touch the emulator)…");
 
   // ONLY=search runs just the cases whose name contains "search".

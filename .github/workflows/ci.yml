@@ -1,0 +1,51 @@
+# Typecheck everything, then run the end-to-end suite (website and app in a browser) against the
+# same Docker services as local development. The native Android run needs an emulator and stays local.
+name: CI
+
+on:
+  push:
+    branches: [main, "feature/**", "chore/**"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r typecheck
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Install the browser
+        working-directory: e2e
+        run: pnpm exec playwright install --with-deps chromium
+      - name: End-to-end tests
+        run: pnpm test:e2e
+      - name: Keep the traces of failed tests
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: e2e/test-results
+          retention-days: 7
+      - name: Stop the test services
+        if: always()
+        run: docker compose --project-name propperbrew-e2e down --volumes

@@ -72,8 +72,14 @@ export class Device {
           };
         });
       } catch (err) {
-        // uiautomator refuses while the UI is mid-animation; try again shortly.
+        // uiautomator refuses while the UI is mid-animation; try again shortly. A dump that timed
+        // out can leave uiautomator running on the device, and every later dump waits behind it.
         if (attempt >= 10) throw err;
+        try {
+          adb("shell", "pkill", "-f", "uiautomator");
+        } catch {
+          // Nothing was running (pkill exits 1).
+        }
         await sleep(500);
       }
     }
@@ -159,6 +165,12 @@ export class Device {
     if (!/^[a-z0-9]+$/i.test(text)) throw new Error(`Can't type ${JSON.stringify(text)}: letters and digits only`);
     adb("shell", "input", "text", text);
     await sleep(400);
+    // Close the on-screen keyboard: its suggestion strip keeps redrawing, so uiautomator never
+    // sees the UI go idle and can't read the screen. Back only closes the keyboard here.
+    if (/mInputShown=true/.test(adb("shell", "dumpsys", "input_method"))) {
+      adb("shell", "input", "keyevent", "KEYCODE_BACK");
+      await sleep(400);
+    }
   }
 
   async swipeLeftAt(label: string | RegExp) {
@@ -178,7 +190,7 @@ export class Device {
   /** Save what's on screen, to see why a case failed. */
   screenshot(file: string) {
     mkdirSync(dirname(file), { recursive: true });
-    writeFileSync(file, execFileSync(adbPath, ["exec-out", "screencap", "-p"], { timeout: 20_000 }));
+    writeFileSync(file, execFileSync(adbPath, ["exec-out", "screencap", "-p"], { timeout: 20_000, maxBuffer: 32 * 1024 * 1024 }));
   }
 
   clearLog() {
