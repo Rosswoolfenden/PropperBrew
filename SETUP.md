@@ -123,4 +123,4 @@ Everything is ready in the repo: `apps/api/fly.staging.toml`, `apps/web/fly.stag
 - [ ] **Who reads reports, and how often.** Reported reviews, recipes and profiles are saved but nobody is told yet (README, "Reports"). The app stores expect reports to be acted on. Options are a daily email digest to the support address, or a small admin page later.
   - **Send:** who should get them.
 
-- [ ] **Merge `feature/roaster-platform` into `main`?** It has seven features on it. I can open a pull request.
+- [ ] **Merge `feature/roaster-platform` into `main`.** Open the pull request from https://github.com/Rosswoolfenden/PropperBrew/compare/main...feature/roaster-platform (the description is ready; there's no GitHub CLI here to open it for you). CI runs on it automatically.
